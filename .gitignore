@@ -1,0 +1,38 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Visual Studio / VS Code / PyProj noise
+.vs/
+*.db
+*.db-shm
+*.db-wal
+*.vsidx
+*.json.backup
+.cache/
+.cache
+
+# OS files
+Thumbs.db
+Desktop.ini
+
+# Build / project artifacts
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Personal Spotify exports
+playlists.json
+playlist_stats.json
+tracks.json
+
+# Visual Studio project files
+*.pyproj
+*.sln
+
+# Data exports
+data/raw/
+
+# My personal key
+my_secrets.py
