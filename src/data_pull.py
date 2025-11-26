@@ -1,20 +1,37 @@
-﻿#THIS SCRIPT PULLS DATA DIRECTLY FROM SPOTIFY USING YOUR ACCOUNT'S CREDENTIALS AND SAVES IT LOCALLY AS JSON FILES.
-#NO ANALYSIS PERFORMED HERE.
+﻿# THIS SCRIPT PULLS DATA DIRECTLY FROM SPOTIFY USING YOUR ACCOUNT'S CREDENTIALS
+# AND SAVES IT LOCALLY AS JSON FILES.
 
 import spotipy
 import my_secrets
 from spotipy.oauth2 import SpotifyOAuth
 import json
-
 from pathlib import Path
+import time
+import spotipy.exceptions
 
-# Base directory for project files
+def safe_spotify_call(func, *args, **kwargs):
+    """Retry Spotify API calls safely when hitting rate limits."""
+    while True:
+        try:
+            return func(*args, **kwargs)
+        except spotipy.exceptions.SpotifyException as e:
+            if e.http_status == 429:
+                retry_after = int(e.headers.get("Retry-After", 2))
+                Print(f"Rate limit hit. Sleeping {retry_after} seconds...")
+                time.sleep(retry_after)
+            else:
+                raise
+
+# =====================================================================
+# PATHS
+# =====================================================================
+
 BASE_DIR = Path(__file__).resolve().parent.parent  # Exportify/
 DATA_DIR = BASE_DIR / "data" / "raw"
-
-# Ensure the data/raw folder exists
+CONFIG_DIR = BASE_DIR / "config"
+CONFIG_DIR.mkdir(exist_ok=True)
+SKIP_FILE = CONFIG_DIR / "skip_playlists.txt"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
-
 
 debug = True
 def Print(msg: str):
@@ -22,54 +39,30 @@ def Print(msg: str):
         print(msg)
 
 def progress_bar(prefix, index, total, bar_length=20):
+    if total <= 0:
+        return
     filled = int(bar_length * index / total)
     bar = "#" * filled + "-" * (bar_length - filled)
-    print(f"\r{prefix}: [{bar}] {index}/{total}", end="")
+    print(f"\r{prefix}: [{bar}] {index}/{total}", end="", flush=True)
+
+
+# =====================================================================
+# SPOTIFY LOGIN
+# =====================================================================
 
 sp = spotipy.Spotify(
     auth_manager=SpotifyOAuth(
-        client_id = my_secrets.CLIENT_ID,
-        client_secret = my_secrets.CLIENT_SECRET,
-        redirect_uri = my_secrets.REDIRECT_URI,
+        client_id=my_secrets.CLIENT_ID,
+        client_secret=my_secrets.CLIENT_SECRET,
+        redirect_uri=my_secrets.REDIRECT_URI,
         scope="playlist-read-private playlist-read-collaborative user-library-read user-read-private",
         open_browser=True
     )
 )
 
-Print("Token scope: " + sp.auth_manager.get_access_token(as_dict=True).get("scope", "NONE"))
-
-def save_library_to_json(tracks: dict, playlists: dict):
-    tracks_path = DATA_DIR / "tracks.json"
-    playlists_path = DATA_DIR / "playlists.json"
-
-    with tracks_path.open("w", encoding="utf-8") as f:
-        json.dump(
-            {uri: t.to_dict() for uri, t in tracks.items()},
-            f,
-            indent=4
-        )
-
-    with playlists_path.open("w", encoding="utf-8") as f:
-        json.dump(
-            {pid: p.to_dict() for pid, p in playlists.items()},
-            f,
-            indent=4
-        )
-
-def load_library_from_json():
-    tracks_path = DATA_DIR / "tracks.json"
-    playlists_path = DATA_DIR / "playlists.json"
-
-    with tracks_path.open("r", encoding="utf-8") as f:
-        raw_tracks = json.load(f)
-
-    with playlists_path.open("r", encoding="utf-8") as f:
-        raw_playlists = json.load(f)
-
-    tracks = {uri: Track.from_dict(t) for uri, t in raw_tracks.items()}
-    playlists = {pid: Playlist.from_dict(p) for pid, p in raw_playlists.items()}
-
-    return tracks, playlists
+# =====================================================================
+# DATA MODELS
+# =====================================================================
 
 class Track:
     def __init__(
@@ -79,7 +72,7 @@ class Track:
         album_name: str,
         artist_names: list[str],
         release_date: str,
-        genres: list[str],   # Can be obtained from ARTISTS, still available
+        genres: list[str],
         duration_ms: int,
         popularity: int,
         explicit: bool,
@@ -95,9 +88,6 @@ class Track:
         self.popularity = popularity
         self.explicit = explicit
         self.associated_playlists = associated_playlists
-
-
-    # ------- JSON Support ------- #
 
     def to_dict(self) -> dict:
         return {
@@ -125,8 +115,9 @@ class Track:
             duration_ms=data["duration_ms"],
             popularity=data["popularity"],
             explicit=data["explicit"],
-            associated_playlists=data["associated_playlists"]
+            associated_playlists=data["associated_playlists"],
         )
+
 
 class Playlist:
     def __init__(
@@ -135,15 +126,13 @@ class Playlist:
         name: str,
         description: str,
         owner: str,
-        contained_tracks: list[str]  # URIs
+        contained_tracks: list[str]
     ):
         self.playlist_id = playlist_id
         self.name = name
         self.description = description
         self.owner = owner
         self.contained_tracks = contained_tracks
-
-    # ------- JSON Support ------- #
 
     def to_dict(self) -> dict:
         return {
@@ -164,145 +153,261 @@ class Playlist:
             contained_tracks=data["contained_tracks"],
         )
 
-def get_all_playlists_into_playlist_object(sp):
-    Print("Fetching playlists...")
+# =====================================================================
+# SAVE AND LOAD
+# =====================================================================
 
+def save_library_to_json(tracks: dict, playlists: dict):
+    tracks_path = DATA_DIR / "tracks.json"
+    playlists_path = DATA_DIR / "playlists.json"
+
+    with tracks_path.open("w", encoding="utf-8") as f:
+        json.dump({uri: t.to_dict() for uri, t in tracks.items()}, f, indent=4)
+
+    with playlists_path.open("w", encoding="utf-8") as f:
+        json.dump({pid: p.to_dict() for pid, p in playlists.items()}, f, indent=4)
+
+
+def load_library_from_json():
+    tracks_path = DATA_DIR / "tracks.json"
+    playlists_path = DATA_DIR / "playlists.json"
+
+    with tracks_path.open("r", encoding="utf-8") as f:
+        raw_tracks = json.load(f)
+
+    with playlists_path.open("r", encoding="utf-8") as f:
+        raw_playlists = json.load(f)
+
+    tracks = {uri: Track.from_dict(t) for uri, t in raw_tracks.items()}
+    playlists = {pid: Playlist.from_dict(p) for pid, p in raw_playlists.items()}
+
+    return tracks, playlists
+
+# =====================================================================
+# SKIP LIST
+# =====================================================================
+
+def load_skip_list():
+    if not SKIP_FILE.exists():
+        return set()
+    with SKIP_FILE.open("r", encoding="utf-8") as f:
+        return {line.strip().lower() for line in f if line.strip()}
+
+# =====================================================================
+# PLAYLIST FETCHING
+# =====================================================================
+
+def get_all_playlists_and_counts(sp):
+    Print("Fetching playlists...")
     playlists = sp.current_user_playlists()
     items = playlists["items"]
-
-    names = []
-
-    for pl in playlists["items"]:
-        names.append(pl["name"])
 
     while playlists["next"]:
         playlists = sp.next(playlists)
         items.extend(playlists["items"])
-        for pl in playlists["items"]:
-            names.append(pl["name"])
-
-    Print(", ".join(names))
-    Print(f"Total playlists: {len(names)}")
 
     playlist_objects = [
         Playlist(
-            playlist_id=pl["id"],
-            name=pl["name"],
-            description=pl.get("description", ""),
-            owner=pl["owner"]["display_name"],
+            playlist_id=p["id"],
+            name=p["name"],
+            description=p.get("description", ""),
+            owner=p["owner"]["display_name"],
             contained_tracks=[]
         )
-        for pl in items
+        for p in items
     ]
 
-    return playlist_objects
+    track_counts = {p["id"]: p["tracks"]["total"] for p in items}
 
-def build_track_object(t, artist_genres):
-    return Track(
-        track_uri=t["uri"],
-        track_name=t["name"],
-        album_name=t["album"]["name"],
-        artist_names=[a["name"] for a in t["artists"]],
-        release_date=t["album"]["release_date"],
-        genres=artist_genres,
-        duration_ms=t["duration_ms"],
-        popularity=t["popularity"],
-        explicit=t["explicit"],
-        associated_playlists=[]
-    )
+    Print(f"Total playlists: {len(playlist_objects)}")
+    return playlist_objects, track_counts
 
-def get_tracks_for_selected_playlists(sp, playlist_list, target_names):
 
-    MONTHS = [
-    "january","february","march","april","may","june",
-    "july","august","september","october","november","december",
-    "jan","feb","mar","apr","jun","jul","aug","sep","sept","oct","nov","dec"
+def fetch_playlist_tracks(sp, playlist: Playlist, artist_genre_cache: dict):
+    raw = safe_spotify_call(sp.playlist_items, playlist.playlist_id)
+    items = raw["items"]
+    while raw["next"]:
+        raw = safe_spotify_call(sp.next, raw)
+        items.extend(raw["items"])
+
+    uris = []
+    track_map = {}
+
+    total = len(items)
+    count = 0
+
+    for item in items:
+        count += 1
+        progress_bar(playlist.name, count, total)
+
+        t = item["track"]
+        if not t:
+            continue
+
+        uri = t["uri"]
+        uris.append(uri)
+        track_map[uri] = t
+
+    print()
+    playlist.contained_tracks = uris
+
+    return track_map
+
+# =====================================================================
+# BATCH GENRE FETCHING (FIX FOR RATE LIMITS)
+# =====================================================================
+
+def fetch_genres_for_artists(sp, artist_ids: list[str], cache: dict):
+    """Fetch genres for many artists at once (max 50 per request)."""
+    missing = [aid for aid in artist_ids if aid not in cache]
+
+    for i in range(0, len(missing), 50):
+        batch = missing[i:i+50]
+        result = sp.artists(batch)
+        for artist in result["artists"]:
+            cache[artist["id"]] = artist.get("genres", [])
+
+# =====================================================================
+# UPDATE TRACKS AND PLAYLIST
+# =====================================================================
+
+def update_tracks_and_playlist_for_changed(
+    sp,
+    playlist: Playlist,
+    old_playlist: Playlist | None,
+    tracks: dict,
+    artist_genre_cache: dict
+):
+
+    old_uris = set(old_playlist.contained_tracks) if old_playlist else set()
+
+    # Fetch all track items for this playlist
+    track_map = fetch_playlist_tracks(sp, playlist, artist_genre_cache)
+
+    # ---------------------------------------------------------
+    # NEW: Batch artist genre lookup to avoid rate limits
+    # ---------------------------------------------------------
+
+    artist_ids = [
+        t["artists"][0]["id"]
+        for t in track_map.values()
+        if t["artists"]
     ]
 
-    Print("Fetching tracks...")
+    # Deduplicate
+    unique_ids = list(set(artist_ids))
 
-    tracks = {}
-    track_names = []
-    artist_genre_cache = {}  # artist_id -> genres
+    # Populate cache in bulk
+    fetch_genres_for_artists(sp, unique_ids, artist_genre_cache)
+
+    # ---------------------------------------------------------
+
+    new_uris = set(playlist.contained_tracks)
+
+    # Update or create track objects
+    for uri in new_uris:
+        t = track_map[uri]
+        artist_id = t["artists"][0]["id"] if t["artists"] else None
+        genres = artist_genre_cache.get(artist_id, [])
+
+        if uri in tracks:
+            track_obj = tracks[uri]
+            track_obj.track_name = t["name"]
+            track_obj.album_name = t["album"]["name"]
+            track_obj.artist_names = [a["name"] for a in t["artists"]]
+            track_obj.release_date = t["album"]["release_date"]
+            track_obj.genres = genres
+            track_obj.duration_ms = t["duration_ms"]
+            track_obj.popularity = t["popularity"]
+            track_obj.explicit = t["explicit"]
+        else:
+            track_obj = Track(
+                track_uri=t["uri"],
+                track_name=t["name"],
+                album_name=t["album"]["name"],
+                artist_names=[a["name"] for a in t["artists"]],
+                release_date=t["album"]["release_date"],
+                genres=genres,
+                duration_ms=t["duration_ms"],
+                popularity=t["popularity"],
+                explicit=t["explicit"],
+                associated_playlists=[]
+            )
+            tracks[uri] = track_obj
+
+        if playlist.playlist_id not in track_obj.associated_playlists:
+            track_obj.associated_playlists.append(playlist.playlist_id)
+
+    # Remove old associations
+    removed_uris = old_uris - new_uris
+    for uri in removed_uris:
+        if uri in tracks:
+            track_obj = tracks[uri]
+            if playlist.playlist_id in track_obj.associated_playlists:
+                track_obj.associated_playlists.remove(playlist.playlist_id)
+
+# =====================================================================
+# MAIN
+# =====================================================================
+
+if __name__ == "__main__":
+
+    Print("Token scope: " +
+        sp.auth_manager.get_access_token(as_dict=True).get("scope", "NONE"))
+
+    Print("Checking for saved data.")
+    try:
+        old_tracks, old_playlists = load_library_from_json()
+        Print("Loaded existing library files.")
+    except FileNotFoundError:
+        old_tracks, old_playlists = {}, {}
+        Print("No existing library found. Starting fresh.")
+
+    playlist_list, remote_track_counts = get_all_playlists_and_counts(sp)
+    target_names_to_skip = load_skip_list()
+
+    Print("Playlist order:")
+    for i, pl in enumerate(playlist_list):
+        Print(f"{i}: {pl.name}")
+
+
+    Print("\nChecking playlists for updates...\n")
+
+    merged_playlists = old_playlists.copy()
+    merged_tracks = old_tracks.copy()
+    artist_genre_cache = {}
 
     for pl in playlist_list:
         pl_name = pl.name.lower()
 
-        # Skip playlists explicitly excluded by name
-        if pl_name in target_names:
-            Print(f"Skipping playlist (excluded): {pl.name}")
+        if pl_name in target_names_to_skip:
+            Print(f"Skipping (config): {pl.name}")
             continue
 
-        # Skip playlists containing any month name
-        if any(m in pl_name for m in MONTHS):
+        Print(f"\nChecking: {pl.name}")
+
+        old_p = old_playlists.get(pl.playlist_id)
+        remote_count = remote_track_counts.get(pl.playlist_id, 0)
+        old_count = len(old_p.contained_tracks) if old_p else -1
+
+        if old_p and remote_count == old_count:
+            Print(f"No update needed ({remote_count} tracks)")
+            merged_playlists[pl.playlist_id] = old_p
             continue
 
-        raw_tracks = sp.playlist_items(pl.playlist_id)
-        items = raw_tracks["items"]
+        Print(f"Updating playlist: {pl.name}")
 
-        while raw_tracks["next"]:
-            raw_tracks = sp.next(raw_tracks)
-            items.extend(raw_tracks["items"])
+        # Main update logic (includes batch genre fetch)
+        update_tracks_and_playlist_for_changed(
+            sp,
+            pl,
+            old_p,
+            merged_tracks,
+            artist_genre_cache
+        )
 
-        total_tracks = len(items)
-        count = 0
+        merged_playlists[pl.playlist_id] = pl
 
-        for item in items:
-            count += 1
-            progress_bar(pl.name, count, total_tracks)
+    save_library_to_json(merged_tracks, merged_playlists)
 
-            t = item["track"]
-            if not t:
-                continue
-
-            uri = t["uri"]
-
-            # --- primary artist ID ---
-            artist_id = (
-                t["artists"][0]["id"]
-                if t["artists"] and t["artists"][0]["id"]
-                else None
-            )
-
-            # --- genres from artist ---
-            if not artist_id:
-                genres = []
-            else:
-                if artist_id in artist_genre_cache:
-                    genres = artist_genre_cache[artist_id]
-                else:
-                    artist_data = sp.artist(artist_id)
-                    genres = artist_data.get("genres", [])
-                    artist_genre_cache[artist_id] = genres
-
-            # --- build new track ---
-            if uri not in tracks:
-                track_obj = build_track_object(t, genres)
-                tracks[uri] = track_obj
-                track_names.append(track_obj.track_name)
-
-            tracks[uri].associated_playlists.append(pl.playlist_id)
-
-        print()  # newline after each playlist's progress bar
-
-        pl.contained_tracks = [
-            item["track"]["uri"] for item in items if item["track"]
-        ]
-
-    Print(f"Total tracks: {len(track_names)}")
-
-    return tracks
-
-# Pull playlists fresh
-playlist_list = get_all_playlists_into_playlist_object(sp)
-
-# Choose which playlists to scan
-target_names_to_SKIP = {}
-
-# Pull tracks fresh
-tracks = get_tracks_for_selected_playlists(sp, playlist_list, target_names_to_SKIP)
-
-# Save everything freshly to JSON
-save_library_to_json(tracks, {p.playlist_id: p for p in playlist_list})
-
-Print("Done!")
+    Print("\nDone!")

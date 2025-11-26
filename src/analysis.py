@@ -1,28 +1,28 @@
-﻿#THIS SCRIPT 
+﻿# TAKES RAW JSON FILES AND OUTPUTS TO A PROCESSED JSON FOR WORKING OFF OF
 
-import spotipy
-from spotipy.oauth2 import SpotifyOAuth
 import json
+from pathlib import Path
 
 debug = True
 def Print(msg: str):
     if debug:
         print(msg)
 
-def progress_bar(prefix, index, total, bar_length=20):
-    filled = int(bar_length * index / total)
-    bar = "#" * filled + "-" * (bar_length - filled)
-    print(f"\r{prefix}: [{bar}] {index}/{total}", end="")
+# -------------------------------------------------------
+# Paths
+# -------------------------------------------------------
 
-sp = spotipy.Spotify(
-    auth_manager=SpotifyOAuth(
-        client_id=CLIENT_ID,
-        client_secret=CLIENT_SECRET,
-        redirect_uri="http://127.0.0.1:8888/callback",
-        scope="playlist-read-private playlist-read-collaborative user-library-read user-read-private",
-        open_browser=True
-    )
-)
+BASE_DIR = Path(__file__).resolve().parent.parent  # Exportify/
+DATA_DIR = BASE_DIR / "data" / "raw"
+
+TRACKS_PATH = DATA_DIR / "tracks.json"
+PLAYLISTS_PATH = DATA_DIR / "playlists.json"
+OUTPUT_PATH = BASE_DIR / "data" / "processed" / "playlist_stats.json"
+OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+# -------------------------------------------------------
+# Data Models (match data_pull.py exactly)
+# -------------------------------------------------------
 
 class Track:
     def __init__(
@@ -66,11 +66,17 @@ class Playlist:
     def from_dict(cls, d):
         return cls(**d)
 
+# -------------------------------------------------------
+# Load Library (offline)
+# -------------------------------------------------------
+
 def load_library():
-    with open("tracks.json", "r", encoding="utf-8") as f:
+    Print("Loading library...")
+
+    with TRACKS_PATH.open("r", encoding="utf-8") as f:
         raw_tracks = json.load(f)
 
-    with open("playlists.json", "r", encoding="utf-8") as f:
+    with PLAYLISTS_PATH.open("r", encoding="utf-8") as f:
         raw_playlists = json.load(f)
 
     tracks = {uri: Track.from_dict(t) for uri, t in raw_tracks.items()}
@@ -79,6 +85,10 @@ def load_library():
     Print(f"Loaded {len(tracks)} tracks and {len(playlists)} playlists.")
     return tracks, playlists
 
+# -------------------------------------------------------
+# Build Stats
+# -------------------------------------------------------
+
 def build_playlist_stats(tracks, playlists):
     stats = {}
 
@@ -86,44 +96,52 @@ def build_playlist_stats(tracks, playlists):
         genre_counts = {}
         artist_counts = {}
         popularity_sum = 0
-        count = len(pl.contained_tracks)
+        track_count = len(pl.contained_tracks)
 
         for uri in pl.contained_tracks:
             t = tracks.get(uri)
             if not t:
                 continue
 
-            # genres
+            # Genres
             for g in t.genres:
                 genre_counts[g] = genre_counts.get(g, 0) + 1
 
-            # artists
+            # Artists
             for a in t.artist_names:
                 artist_counts[a] = artist_counts.get(a, 0) + 1
 
-            # popularity
+            # Popularity
             popularity_sum += t.popularity
 
         stats[pid] = {
+            "playlist_id": pid,
             "name": pl.name,
-            "track_count": count,
-            "genre_counts": genre_counts,
-            "artist_counts": artist_counts,
+            "track_count": track_count,
             "unique_genres": len(genre_counts),
             "unique_artists": len(artist_counts),
-            "avg_popularity": popularity_sum / count if count else 0
+            "avg_popularity": popularity_sum / track_count if track_count else 0,
+            "genre_counts": genre_counts,
+            "artist_counts": artist_counts,
         }
 
     return stats
 
+# -------------------------------------------------------
+# Save Results
+# -------------------------------------------------------
+
 def save_playlist_stats(stats):
-    with open("playlist_stats.json", "w", encoding="utf-8") as f:
+    with OUTPUT_PATH.open("w", encoding="utf-8") as f:
         json.dump(stats, f, indent=4)
+    Print(f"Saved stats → {OUTPUT_PATH}")
 
-tracks, playlists = load_library()
+# -------------------------------------------------------
+# Main
+# -------------------------------------------------------
 
-playlist_stats = build_playlist_stats(tracks, playlists)
-
-save_playlist_stats(playlist_stats)
-
-Print("Playlist stats built and saved.")
+if __name__ == "__main__":
+    tracks, playlists = load_library()
+    stats = build_playlist_stats(tracks, playlists)
+    save_playlist_stats(stats)
+    Print("Done building playlist stats.")
