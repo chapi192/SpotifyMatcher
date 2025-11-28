@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import time
 import spotipy.exceptions
+from models import Track, Playlist
 
 def safe_spotify_call(func, *args, **kwargs):
     """Retry Spotify API calls safely when hitting rate limits."""
@@ -59,99 +60,6 @@ sp = spotipy.Spotify(
         open_browser=True
     )
 )
-
-# =====================================================================
-# DATA MODELS
-# =====================================================================
-
-class Track:
-    def __init__(
-        self,
-        track_uri: str,
-        track_name: str,
-        album_name: str,
-        artist_names: list[str],
-        release_date: str,
-        genres: list[str],
-        duration_ms: int,
-        popularity: int,
-        explicit: bool,
-        associated_playlists: list[str]
-    ):
-        self.track_uri = track_uri
-        self.track_name = track_name
-        self.album_name = album_name
-        self.artist_names = artist_names
-        self.release_date = release_date
-        self.genres = genres
-        self.duration_ms = duration_ms
-        self.popularity = popularity
-        self.explicit = explicit
-        self.associated_playlists = associated_playlists
-
-    def to_dict(self) -> dict:
-        return {
-            "track_uri": self.track_uri,
-            "track_name": self.track_name,
-            "album_name": self.album_name,
-            "artist_names": self.artist_names,
-            "release_date": self.release_date,
-            "genres": self.genres,
-            "duration_ms": self.duration_ms,
-            "popularity": self.popularity,
-            "explicit": self.explicit,
-            "associated_playlists": self.associated_playlists,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(
-            track_uri=data["track_uri"],
-            track_name=data["track_name"],
-            album_name=data["album_name"],
-            artist_names=data["artist_names"],
-            release_date=data["release_date"],
-            genres=data["genres"],
-            duration_ms=data["duration_ms"],
-            popularity=data["popularity"],
-            explicit=data["explicit"],
-            associated_playlists=data["associated_playlists"],
-        )
-
-
-class Playlist:
-    def __init__(
-        self,
-        playlist_id: str,
-        name: str,
-        description: str,
-        owner: str,
-        contained_tracks: list[str]
-    ):
-        self.playlist_id = playlist_id
-        self.name = name
-        self.description = description
-        self.owner = owner
-        self.contained_tracks = contained_tracks
-
-    def to_dict(self) -> dict:
-        return {
-            "playlist_id": self.playlist_id,
-            "name": self.name,
-            "description": self.description,
-            "owner": self.owner,
-            "contained_tracks": self.contained_tracks,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(
-            playlist_id=data["playlist_id"],
-            name=data["name"],
-            description=data["description"],
-            owner=data["owner"],
-            contained_tracks=data["contained_tracks"],
-        )
 
 # =====================================================================
 # SAVE AND LOAD

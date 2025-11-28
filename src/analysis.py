@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from models import Track, Playlist
 
 debug = True
 def Print(msg: str):
@@ -19,52 +20,6 @@ TRACKS_PATH = DATA_DIR / "tracks.json"
 PLAYLISTS_PATH = DATA_DIR / "playlists.json"
 OUTPUT_PATH = BASE_DIR / "data" / "processed" / "playlist_stats.json"
 OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-# -------------------------------------------------------
-# Data Models (match data_pull.py exactly)
-# -------------------------------------------------------
-
-class Track:
-    def __init__(
-        self,
-        track_uri,
-        track_name,
-        album_name,
-        artist_names,
-        release_date,
-        genres,
-        duration_ms,
-        popularity,
-        explicit,
-        associated_playlists
-    ):
-        self.track_uri = track_uri
-        self.track_name = track_name
-        self.album_name = album_name
-        self.artist_names = artist_names
-        self.release_date = release_date
-        self.genres = genres
-        self.duration_ms = duration_ms
-        self.popularity = popularity
-        self.explicit = explicit
-        self.associated_playlists = associated_playlists
-
-    @classmethod
-    def from_dict(cls, d):
-        return cls(**d)
-
-
-class Playlist:
-    def __init__(self, playlist_id, name, description, owner, contained_tracks):
-        self.playlist_id = playlist_id
-        self.name = name
-        self.description = description
-        self.owner = owner
-        self.contained_tracks = contained_tracks
-
-    @classmethod
-    def from_dict(cls, d):
-        return cls(**d)
 
 # -------------------------------------------------------
 # Load Library (offline)
