@@ -1,6 +1,4 @@
-﻿# build_complete_library.py
-# Create or update a playlist containing ALL tracks from tracks.json
-# Automatically skips invalid or unsupported URIs (local files, episodes, malformed, etc.)
+﻿# THIS SCRIPT MAKES A PLAYLIST ON SPOTIFY CALLED "COMPLETE LIBRARY" FROM ALL TRACKS ON PREVIOUS STEPS. MUST BE DOWNLOADED FROM EXPORTIFY.COM FOR CSV_TO_TRACKS.PY
 
 import json
 import time

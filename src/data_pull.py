@@ -1,5 +1,5 @@
 ﻿# THIS SCRIPT PULLS DATA DIRECTLY FROM SPOTIFY USING YOUR ACCOUNT'S CREDENTIALS
-# AND SAVES IT LOCALLY AS JSON FILES.
+# AND SAVES IT LOCALLY AS JSON FILES TO BE EDITED BY OTHER SCRIPTS.
 
 import spotipy
 import my_secrets
@@ -7,8 +7,49 @@ from spotipy.oauth2 import SpotifyOAuth
 import json
 from pathlib import Path
 import time
+import datetime
+import sys
 import spotipy.exceptions
 from models import Track, Playlist
+
+
+# =====================================================================
+# DEBUG PRINT
+# =====================================================================
+
+debug = True
+
+def Print(msg: str, level="info"):
+    if not debug:
+        return
+
+    ts = datetime.datetime.now().strftime("%H:%M:%S")
+    tag = {
+        "info": "",
+        "warn": "(!) ",
+        "error": "[ERR] ",
+        "success": ""
+    }.get(level, "")
+
+    msg = msg.replace("→", "->")
+    print(f"{ts} {tag}{msg}")
+    sys.stdout.flush()
+
+
+def progress_bar(prefix, index, total, bar_length=25):
+    if total <= 0:
+        return
+    frac = index / total
+    filled = int(frac * bar_length)
+    bar = "#" * filled + "-" * (bar_length - filled)
+    print(f"\r{prefix[:22]:22} [{bar}] {index}/{total}", end="", flush=True)
+    if index == total:
+        print()
+
+
+# =====================================================================
+# SPOTIFY SAFE CALL
+# =====================================================================
 
 def safe_spotify_call(func, *args, **kwargs):
     """Retry Spotify API calls safely when hitting rate limits."""
@@ -18,10 +59,11 @@ def safe_spotify_call(func, *args, **kwargs):
         except spotipy.exceptions.SpotifyException as e:
             if e.http_status == 429:
                 retry_after = int(e.headers.get("Retry-After", 2))
-                Print(f"Rate limit hit. Sleeping {retry_after} seconds...")
+                Print(f"Rate limit hit. Sleeping {retry_after} sec...", "warn")
                 time.sleep(retry_after)
             else:
                 raise
+
 
 # =====================================================================
 # PATHS
@@ -31,38 +73,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent  # Exportify/
 DATA_DIR = BASE_DIR / "data" / "raw"
 CONFIG_DIR = BASE_DIR / "config"
 CONFIG_DIR.mkdir(exist_ok=True)
-SKIP_FILE = CONFIG_DIR / "skip_playlists.txt"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
-
-debug = True
-def Print(msg: str):
-    if debug:
-        print(msg)
-
-def progress_bar(prefix, index, total, bar_length=20):
-    if total <= 0:
-        return
-    filled = int(bar_length * index / total)
-    bar = "#" * filled + "-" * (bar_length - filled)
-    print(f"\r{prefix}: [{bar}] {index}/{total}", end="", flush=True)
+SKIP_FILE = CONFIG_DIR / "skip_playlists.txt"
 
 
 # =====================================================================
-# SPOTIFY LOGIN
-# =====================================================================
-
-sp = spotipy.Spotify(
-    auth_manager=SpotifyOAuth(
-        client_id=my_secrets.CLIENT_ID,
-        client_secret=my_secrets.CLIENT_SECRET,
-        redirect_uri=my_secrets.REDIRECT_URI,
-        scope="playlist-read-private playlist-read-collaborative user-library-read user-read-private",
-        open_browser=True
-    )
-)
-
-# =====================================================================
-# SAVE AND LOAD
+# SAVE / LOAD
 # =====================================================================
 
 def save_library_to_json(tracks: dict, playlists: dict):
@@ -91,15 +107,13 @@ def load_library_from_json():
 
     return tracks, playlists
 
-# =====================================================================
-# SKIP LIST
-# =====================================================================
 
 def load_skip_list():
     if not SKIP_FILE.exists():
         return set()
     with SKIP_FILE.open("r", encoding="utf-8") as f:
         return {line.strip().lower() for line in f if line.strip()}
+
 
 # =====================================================================
 # PLAYLIST FETCHING
@@ -127,24 +141,22 @@ def get_all_playlists_and_counts(sp):
 
     track_counts = {p["id"]: p["tracks"]["total"] for p in items}
 
-    Print(f"Total playlists: {len(playlist_objects)}")
+    Print(f"Total playlists found: {len(playlist_objects)}")
     return playlist_objects, track_counts
 
 
 def fetch_playlist_tracks(sp, playlist: Playlist, artist_genre_cache: dict):
+    # first page
     raw = safe_spotify_call(sp.playlist_items, playlist.playlist_id)
     items = raw["items"]
-    while raw["next"]:
-        raw = safe_spotify_call(sp.next, raw)
-        items.extend(raw["items"])
+    total = raw["total"]  # Spotify gives the total track count
 
-    uris = []
-    track_map = {}
-
-    total = len(items)
     count = 0
+    track_map = {}
+    uris = []
 
-    for item in items:
+    # Process first page
+    for item in raw["items"]:
         count += 1
         progress_bar(playlist.name, count, total)
 
@@ -156,13 +168,28 @@ def fetch_playlist_tracks(sp, playlist: Playlist, artist_genre_cache: dict):
         uris.append(uri)
         track_map[uri] = t
 
-    print()
-    playlist.contained_tracks = uris
+    # Process remaining pages
+    while raw["next"]:
+        raw = safe_spotify_call(sp.next, raw)
 
+        for item in raw["items"]:
+            count += 1
+            progress_bar(playlist.name, count, total)
+
+            t = item["track"]
+            if not t:
+                continue
+
+            uri = t["uri"]
+            uris.append(uri)
+            track_map[uri] = t
+
+    playlist.contained_tracks = uris
     return track_map
 
+
 # =====================================================================
-# BATCH GENRE FETCHING (FIX FOR RATE LIMITS)
+# BATCH GENRE FETCHING
 # =====================================================================
 
 def fetch_genres_for_artists(sp, artist_ids: list[str], cache: dict):
@@ -171,12 +198,13 @@ def fetch_genres_for_artists(sp, artist_ids: list[str], cache: dict):
 
     for i in range(0, len(missing), 50):
         batch = missing[i:i+50]
-        result = sp.artists(batch)
+        result = safe_spotify_call(sp.artists, batch)
         for artist in result["artists"]:
             cache[artist["id"]] = artist.get("genres", [])
 
+
 # =====================================================================
-# UPDATE TRACKS AND PLAYLIST
+# UPDATE PLAYLIST / TRACKS
 # =====================================================================
 
 def update_tracks_and_playlist_for_changed(
@@ -188,31 +216,20 @@ def update_tracks_and_playlist_for_changed(
 ):
 
     old_uris = set(old_playlist.contained_tracks) if old_playlist else set()
-
-    # Fetch all track items for this playlist
     track_map = fetch_playlist_tracks(sp, playlist, artist_genre_cache)
 
-    # ---------------------------------------------------------
-    # NEW: Batch artist genre lookup to avoid rate limits
-    # ---------------------------------------------------------
-
+    # Batch artist genre lookup
     artist_ids = [
         t["artists"][0]["id"]
         for t in track_map.values()
         if t["artists"]
     ]
-
-    # Deduplicate
     unique_ids = list(set(artist_ids))
-
-    # Populate cache in bulk
     fetch_genres_for_artists(sp, unique_ids, artist_genre_cache)
-
-    # ---------------------------------------------------------
 
     new_uris = set(playlist.contained_tracks)
 
-    # Update or create track objects
+    # Update or create tracks
     for uri in new_uris:
         t = track_map[uri]
         artist_id = t["artists"][0]["id"] if t["artists"] else None
@@ -243,16 +260,18 @@ def update_tracks_and_playlist_for_changed(
             )
             tracks[uri] = track_obj
 
+        # add association
         if playlist.playlist_id not in track_obj.associated_playlists:
             track_obj.associated_playlists.append(playlist.playlist_id)
 
-    # Remove old associations
+    # remove any old associations
     removed_uris = old_uris - new_uris
     for uri in removed_uris:
         if uri in tracks:
-            track_obj = tracks[uri]
-            if playlist.playlist_id in track_obj.associated_playlists:
-                track_obj.associated_playlists.remove(playlist.playlist_id)
+            t = tracks[uri]
+            if playlist.playlist_id in t.associated_playlists:
+                t.associated_playlists.remove(playlist.playlist_id)
+
 
 # =====================================================================
 # MAIN
@@ -260,52 +279,49 @@ def update_tracks_and_playlist_for_changed(
 
 if __name__ == "__main__":
 
-    Print("Token scope: " +
-        sp.auth_manager.get_access_token(as_dict=True).get("scope", "NONE"))
+    sp = spotipy.Spotify(
+        auth_manager=SpotifyOAuth(
+            client_id=my_secrets.CLIENT_ID,
+            client_secret=my_secrets.CLIENT_SECRET,
+            redirect_uri=my_secrets.REDIRECT_URI,
+            scope="playlist-read-private playlist-read-collaborative user-library-read user-read-private",
+            open_browser=True
+        )
+    )
 
-    Print("Checking for saved data.")
+    Print("Checking for existing saved data...")
+
     try:
         old_tracks, old_playlists = load_library_from_json()
-        Print("Loaded existing library files.")
+        Print("Loaded existing library.")
     except FileNotFoundError:
         old_tracks, old_playlists = {}, {}
-        Print("No existing library found. Starting fresh.")
+        Print("No existing library found. Starting fresh.", "warn")
 
     playlist_list, remote_track_counts = get_all_playlists_and_counts(sp)
-    target_names_to_skip = load_skip_list()
+    skip = load_skip_list()
 
-    Print("Playlist order:")
-    for i, pl in enumerate(playlist_list):
-        Print(f"{i}: {pl.name}")
-
-
-    Print("\nChecking playlists for updates...\n")
+    Print("")
 
     merged_playlists = old_playlists.copy()
     merged_tracks = old_tracks.copy()
     artist_genre_cache = {}
 
+    # Process playlists
     for pl in playlist_list:
-        pl_name = pl.name.lower()
-
-        if pl_name in target_names_to_skip:
-            Print(f"Skipping (config): {pl.name}")
-            continue
-
-        Print(f"\nChecking: {pl.name}")
+        if pl.name.lower() in skip:
+            continue  # silent skip
 
         old_p = old_playlists.get(pl.playlist_id)
         remote_count = remote_track_counts.get(pl.playlist_id, 0)
         old_count = len(old_p.contained_tracks) if old_p else -1
 
         if old_p and remote_count == old_count:
-            Print(f"No update needed ({remote_count} tracks)")
+            Print(f"{pl.name}: up-to-date ({remote_count} tracks)")
             merged_playlists[pl.playlist_id] = old_p
             continue
 
-        Print(f"Updating playlist: {pl.name}")
-
-        # Main update logic (includes batch genre fetch)
+        Print(f"{pl.name}: updating ({remote_count} tracks)")
         update_tracks_and_playlist_for_changed(
             sp,
             pl,
@@ -313,9 +329,25 @@ if __name__ == "__main__":
             merged_tracks,
             artist_genre_cache
         )
-
         merged_playlists[pl.playlist_id] = pl
+
+    # Clean skipped playlists from stored JSON
+    playlists_to_remove = [
+        pid for pid, pl in merged_playlists.items()
+        if pl.name.lower() in skip
+    ]
+
+    for pid in playlists_to_remove:
+        merged_playlists.pop(pid, None)
+
+    for track in merged_tracks.values():
+        track.associated_playlists = [
+            pid for pid in track.associated_playlists
+            if pid not in playlists_to_remove
+        ]
 
     save_library_to_json(merged_tracks, merged_playlists)
 
-    Print("\nDone!")
+    Print("")
+    Print(f"Library saved: {len(merged_tracks)} tracks, {len(merged_playlists)} playlists.", "success")
+    Print("Done.", "success")
