@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <title>Spotify Sorter</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+
+<body>
+
+<nav class="navbar">
+    <div class="brand"><strong>Spotify Sorter</strong></div>
+    <div id="globalProgressBar" class="global-progress"></div>
+    <div class="nav-links">
+        <a href="/">Home</a>
+
+        {% if request.session.get("token_info") %}
+            <a href="/dashboard">Dashboard</a>
+            <a id="navWorkspace" class="nav-disabled" href="/workspace">Workspace</a>
+            <a id="navRecommendations" class="nav-disabled" href="/recommendations">Recommendations</a>
+            <a href="/logout" onclick="handleLogout()">Logout</a>
+        {% else %}
+            <a href="/login">Login</a>
+        {% endif %}
+    </div>
+</nav>
+
+<div class="container">
+    {% block content %}{% endblock %}
+</div>
+
+<script>
+let progressCurrent = 0;
+let progressTarget = 0;
+let pollingActive = false;
+let optimisticCap = 0;
+let creepingActive = false;
+
+function handleLogout() {
+    sessionStorage.removeItem("cachedPlaylists");
+    sessionStorage.removeItem("dashboardAnimated");
+}
+
+async function refreshNavGating() {
+    const workspace = document.getElementById("navWorkspace");
+    const recs = document.getElementById("navRecommendations");
+    if (!workspace || !recs) return;
+
+    // default safe state
+    workspace.classList.add("nav-disabled");
+    recs.classList.add("nav-disabled");
+
+    try {
+        const res = await fetch("/api/nav-state");
+        const data = await res.json();
+
+        const isBuilding = (data.build_status === "building");
+        const hasSelection = !!data.has_selection;
+        const hasBreakdown = !!data.breakdown_source;
+
+        // Workspace: not building AND has selection
+        workspace.classList.toggle("nav-disabled", isBuilding || !hasSelection);
+
+        // Recommendations: not building AND has breakdown
+        recs.classList.toggle("nav-disabled", isBuilding || !hasBreakdown);
+
+    } catch (e) {
+        workspace.classList.add("nav-disabled");
+        recs.classList.add("nav-disabled");
+    }
+}
+
+function animationLoop() {
+    if (creepingActive && optimisticCap > 0) {
+        const creepDiff = optimisticCap - progressCurrent;
+        if (creepDiff > 0.001) {
+            progressCurrent += creepDiff * 0.05;
+        }
+    }
+
+    const diff = progressTarget - progressCurrent;
+    if (Math.abs(diff) > 0.002) {
+        progressCurrent += diff * 0.18;
+    }
+
+    updateProgressUI(progressCurrent);
+    requestAnimationFrame(animationLoop);
+}
+
+function updateProgressUI(value) {
+    const bar = document.getElementById("globalProgressBar");
+    if (!bar) return;
+
+    if (value > 0 && value < 1) bar.style.opacity = "1";
+    bar.style.width = (value * 100) + "%";
+}
+
+function resetProgressBar() {
+    const bar = document.getElementById("globalProgressBar");
+    if (!bar) return;
+
+    progressCurrent = 0;
+    progressTarget = 0;
+    optimisticCap = 0;
+    creepingActive = false;
+
+    bar.style.opacity = "0";
+    bar.style.width = "0%";
+}
+
+async function checkAndMaybeStartPolling() {
+    if (pollingActive) return;
+
+    try {
+        const res = await fetch("/api/build-progress");
+        const data = await res.json();
+
+        if (data.status === "building") {
+            pollingActive = true;
+            pollBuildProgressLoop();
+        }
+    } catch (e) {
+        // ignore
+    }
+}
+
+async function pollBuildProgressLoop() {
+
+    try {
+        const res = await fetch("/api/build-progress");
+        const data = await res.json();
+
+        if (data.status === "complete") {
+
+            pollingActive = false;
+
+            progressCurrent = 1;
+            progressTarget = 1;
+            updateProgressUI(1);
+
+            setTimeout(() => {
+                resetProgressBar();
+                refreshNavGating();
+            }, 400);
+
+            return;
+        }
+
+        if (data.status !== "building") {
+            pollingActive = false;
+            resetProgressBar();
+            refreshNavGating();
+            return;
+        }
+
+        const total = data.total_tracks || 1;
+        const current = data.tracks_processed || 0;
+
+        if (optimisticCap === 0) {
+            const firstChunk = Math.min(100, total);
+            optimisticCap = firstChunk / total;
+            creepingActive = true;
+        }
+
+        const realProgress = Math.min(current / total, 1);
+
+        if (realProgress > 0) creepingActive = false;
+
+        progressTarget = Math.max(progressTarget, realProgress);
+
+        setTimeout(pollBuildProgressLoop, 400);
+
+    } catch (e) {
+        pollingActive = false;
+        resetProgressBar();
+        refreshNavGating();
+    }
+}
+
+animationLoop();
+refreshNavGating();        // exactly once on load
+checkAndMaybeStartPolling();
+</script>
+
+</body>
+</html>

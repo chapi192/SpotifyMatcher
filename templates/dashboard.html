@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2 style="font-size:32px;">Your Playlists</h2>
+
+<div style="margin-bottom:20px;">
+    <button class="btn secondary" onclick="deselectAll()">
+        Deselect All
+    </button>
+</div>
+
+<hr style="margin:30px 0; opacity:0.2;">
+
+<div class="playlist-grid" id="playlistContainer"></div>
+
+<hr style="margin:40px 0; opacity:0.2;">
+
+<h3 style="opacity:0.7;">Hidden Playlists</h3>
+<div class="playlist-grid" id="hiddenContainer"></div>
+
+<script>
+let selectionTimeout = null;
+let hiddenSet = new Set();
+let allPlaylists = [];
+let selectedSet = new Set();
+let breakdownId = null;
+
+async function loadPlaylists() {
+    const cached = sessionStorage.getItem("cachedPlaylists");
+    if (cached) {
+        try {
+            allPlaylists = JSON.parse(cached);
+            renderPlaylists();
+        } catch (e) {}
+    }
+
+    const playlistRes = await fetch("/api/playlists");
+    const playlistData = await playlistRes.json();
+
+    const selectionRes = await fetch("/api/selection");
+    const selectionData = await selectionRes.json();
+
+    selectedSet = new Set(selectionData.selected_ids || []);
+    breakdownId = selectionData.breakdown_source || null;
+    hiddenSet = new Set(selectionData.hidden_ids || []);
+
+    allPlaylists = playlistData.playlists;
+    sessionStorage.setItem("cachedPlaylists", JSON.stringify(allPlaylists));
+
+    renderPlaylists();
+
+    // one clean nav refresh after selection is known
+    refreshNavGating();
+}
+
+function renderPlaylists() {
+    const container = document.getElementById("playlistContainer");
+    const hiddenContainer = document.getElementById("hiddenContainer");
+
+    container.innerHTML = "";
+    hiddenContainer.innerHTML = "";
+
+    const playlists = [...allPlaylists].sort((a, b) => {
+        if (a.name.toLowerCase() === "liked songs") return -1;
+        if (b.name.toLowerCase() === "liked songs") return 1;
+        return a.name.localeCompare(b.name);
+    });
+
+    playlists.forEach((p, index) => {
+        const isHidden = hiddenSet.has(p.id);
+
+        const card = document.createElement("div");
+        card.className = "playlist-card";
+        card.dataset.id = p.id;
+
+        card.classList.add("fade-start");
+
+        const alreadyAnimated = sessionStorage.getItem("dashboardAnimated");
+        if (alreadyAnimated) {
+            card.classList.add("no-animate");
+        } else {
+            card.style.animationDelay = `${index * 60}ms`;
+            card.classList.add("animate-in");
+        }
+
+        if (!isHidden && selectedSet.has(p.id)) card.classList.add("selected");
+        if (!isHidden && breakdownId === p.id) card.classList.add("breakdown");
+        if (isHidden) card.classList.add("hidden-card");
+
+        card.innerHTML = `
+            <div class="playlist-row-content">
+                <div class="playlist-cover">
+                    ${
+                        p.image
+                        ? `<img src="${p.image}" />`
+                        : `<div class="no-cover">♪</div>`
+                    }
+                </div>
+                <div class="playlist-info">
+                    <div class="playlist-name">${p.name}</div>
+                    <div class="playlist-count">${p.track_count} songs</div>
+                </div>
+            </div>
+            <button class="breakdown-btn">BREAKDOWN</button>
+            <button class="hide-bottom-btn">${isHidden ? "UNHIDE" : "HIDE"}</button>
+        `;
+
+        const hideBtn = card.querySelector(".hide-bottom-btn");
+        const breakdownBtn = card.querySelector(".breakdown-btn");
+
+        breakdownBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            if (breakdownId === p.id) breakdownId = null;
+            else { breakdownId = p.id; selectedSet.add(p.id); }
+            renderPlaylists();
+            scheduleSelectionUpdate();
+        });
+
+        hideBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            if (isHidden) hiddenSet.delete(p.id);
+            else {
+                hiddenSet.add(p.id);
+                selectedSet.delete(p.id);
+                if (breakdownId === p.id) breakdownId = null;
+            }
+            renderPlaylists();
+            scheduleSelectionUpdate();
+        });
+
+        if (!isHidden) {
+            card.addEventListener("click", () => {
+                if (selectedSet.has(p.id)) {
+                    selectedSet.delete(p.id);
+                    if (breakdownId === p.id) breakdownId = null;
+                } else selectedSet.add(p.id);
+
+                renderPlaylists();
+                scheduleSelectionUpdate();
+            });
+        }
+
+        if (!isHidden) container.appendChild(card);
+        else hiddenContainer.appendChild(card);
+    });
+
+    if (!sessionStorage.getItem("dashboardAnimated")) {
+        sessionStorage.setItem("dashboardAnimated", "true");
+    }
+}
+
+function deselectAll() {
+    selectedSet.clear();
+    breakdownId = null;
+    renderPlaylists();
+    scheduleSelectionUpdate();
+}
+
+function scheduleSelectionUpdate() {
+    clearTimeout(selectionTimeout);
+
+    // immediate visual disable
+    const workspace = document.getElementById("navWorkspace");
+    const recs = document.getElementById("navRecommendations");
+    if (workspace) workspace.classList.add("nav-disabled");
+    if (recs) recs.classList.add("nav-disabled");
+
+    selectionTimeout = setTimeout(sendSelectionUpdate, 50);
+}
+
+async function sendSelectionUpdate() {
+    await fetch("/api/selection", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            selected_ids: Array.from(selectedSet),
+            breakdown_source: breakdownId,
+            hidden_ids: Array.from(hiddenSet)
+        })
+    });
+
+    // show bar only if build actually started
+    const progressRes = await fetch("/api/build-progress");
+    const progressData = await progressRes.json();
+
+    if (progressData.status === "building") {
+        const bar = document.getElementById("globalProgressBar");
+        if (bar) bar.style.opacity = "1";
+
+        if (!pollingActive) {
+            progressCurrent = 0.02;
+            progressTarget = 0.02;
+        }
+
+        optimisticCap = 0;
+        creepingActive = true;
+
+        checkAndMaybeStartPolling();
+    }
+
+    refreshNavGating();
+}
+
+loadPlaylists();
+</script>
+
+{% endblock %}

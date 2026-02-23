@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2 style="font-size:32px;">Playlist Breakdown</h2>
+
+<div style="margin-top:20px;">
+    <button class="btn" onclick="loadBreakdown()">
+        Run Breakdown
+    </button>
+</div>
+
+<div id="results" style="margin-top:40px;"></div>
+
+<script>
+
+async function loadBreakdown() {
+
+    const res = await fetch("/api/breakdown");
+    const data = await res.json();
+
+    const container = document.getElementById("results");
+    container.innerHTML = "";
+
+    if (data.error) {
+        container.innerHTML = `<p style="color:#f87171;">${data.error}</p>`;
+        return;
+    }
+
+    if (data.status !== "ready") {
+        container.innerHTML = `<p>No breakdown available.</p>`;
+        return;
+    }
+
+    let html = "";
+
+    html += `<h3>Source Playlist</h3>`;
+    html += `<p><strong>${data.source_playlist_name}</strong></p>`;
+
+    html += `<h3 style="margin-top:30px;">Track Routing</h3>`;
+    html += `<ul style="line-height:1.6;">`;
+
+    data.results.forEach(r => {
+
+        const bestId = r.best_match_playlist_id;
+        const bestScore = r.scores[bestId];
+        const bestName = data.targets[bestId] || bestId;
+
+        html += `
+            <li>
+                <strong>${r.track_name}</strong><br>
+                → Best Match: <strong>${bestName}</strong>
+                (score: ${bestScore})
+            </li>
+            <br>
+        `;
+    });
+
+    html += `</ul>`;
+
+    container.innerHTML = html;
+}
+
+</script>
+
+{% endblock %}

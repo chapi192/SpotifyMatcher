@@ -36,3 +36,4 @@ data/raw/
 
 # My personal key
 my_secrets.py
+.env

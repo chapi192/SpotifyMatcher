@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>{{ playlist.name }}</h2>
+
+<p>Track Count: {{ playlist.track_count }}</p>
+
+<a href="/dashboard">← Back to Dashboard</a>
+{% endblock %}
