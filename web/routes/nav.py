@@ -16,7 +16,8 @@ def nav_state(request: Request):
             "breakdown_source": None
         }
 
-    user_id = sp.current_user()["id"]
+    from web.spotify_auth import get_user_id
+    user_id = get_user_id(request)
     state = USER_BUILD_STATE.get(user_id)
 
     build_status = state["status"] if state else "idle"

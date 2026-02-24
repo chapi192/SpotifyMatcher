@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse, JSONResponse
 import spotipy
 
-from web.spotify_auth import build_oauth, refresh_if_needed, get_spotify_client
+from web.spotify_auth import build_oauth, get_user_id, refresh_if_needed, get_spotify_client
 from web.state import USER_BUILD_STATE, PLAYLIST_DATA_CACHE, PLAYLIST_CACHE, BUILD_STATE
 
 router = APIRouter()
@@ -18,7 +18,8 @@ def logout(request: Request):
 
     sp = get_spotify_client(request)
     if sp:
-        user_id = sp.current_user()["id"]
+        from web.spotify_auth import get_user_id
+        user_id = get_user_id(request)
         USER_BUILD_STATE.pop(user_id, None)
         PLAYLIST_DATA_CACHE.pop(user_id, None)
         PLAYLIST_CACHE.pop(user_id, None)
@@ -64,5 +65,10 @@ def callback(request: Request):
 
     token_info = oauth.get_access_token(code, check_cache=False)
     request.session["token_info"] = token_info
+
+    sp = spotipy.Spotify(auth_manager=oauth)
+    from web.spotify_auth import get_user_id
+    user_id = get_user_id(request)
+    request.session["user_id"] = user_id
 
     return RedirectResponse("/dashboard")

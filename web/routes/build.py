@@ -1,10 +1,13 @@
+import traceback
+
 from fastapi import APIRouter, Request
 import threading
 import time
+from requests import request
 import spotipy
 
 from web.spotify_auth import get_spotify_client, build_oauth, build_oauth
-from web.state import BUILD_STATE, USER_BUILD_STATE, PLAYLIST_DATA_CACHE
+from web.state import BUILD_STATE, USER_BUILD_STATE, PLAYLIST_DATA_CACHE, ARTIST_CACHE
 from web.services.fetch_data import fetch_single_playlist
 from web.services.profile_library import build_playlist_profiles
 
@@ -26,13 +29,17 @@ def start_incremental_build(request: Request, user_id: str, version: int, playli
     def run_job():
         try:
             thread_sp = spotipy.Spotify(auth_manager=oauth)
-            artist_cache = {}
+            artist_cache = ARTIST_CACHE.setdefault(user_id, {})
+
+            build_start_time = time.time()
 
             for pid in playlist_ids:
 
                 if BUILD_STATE.get(user_id, {}).get("version") != version:
                     return
-                    
+
+                playlist_start_time = time.time()
+
                 def progress_increment(amount):
                     state = USER_BUILD_STATE.get(user_id)
                     if not state:
@@ -49,7 +56,10 @@ def start_incremental_build(request: Request, user_id: str, version: int, playli
                     pid,
                     artist_cache=artist_cache,
                     progress_callback=progress_increment
-)
+                )
+
+                playlist_duration = time.time() - playlist_start_time
+                print(f"[BUILD] Playlist {pid} fetched in {playlist_duration:.2f}s")
 
                 single_dataset = {pid: playlist_dataset}
                 profile = build_playlist_profiles(single_dataset).get(pid)
@@ -61,13 +71,18 @@ def start_incremental_build(request: Request, user_id: str, version: int, playli
                     "fetched_at": time.time()
                 }
             
+            total_duration = time.time() - build_start_time
+            print(f"[BUILD] Total build completed in {total_duration:.2f}s")
+
             state = USER_BUILD_STATE.get(user_id)
             if state and state["version"] == version:
                 state["tracks_processed"] = state["total_tracks"]
                 state["status"] = "complete"
 
+
         except Exception as e:
             print("Incremental build error:", e)
+            traceback.print_exc()
 
             state = USER_BUILD_STATE.get(user_id)
             if state and state["version"] == version:
@@ -78,12 +93,21 @@ def start_incremental_build(request: Request, user_id: str, version: int, playli
 @router.get("/api/build-progress")
 def build_progress(request: Request):
 
-    sp = get_spotify_client(request)
-    if not sp:
-        return {"status": "idle"}
+    from web.spotify_auth import get_user_id, get_spotify_client
 
-    user_id = sp.current_user()["id"]
+    user_id = get_user_id(request)
+
+    # Fallback if session missing user_id
+    if not user_id:
+        sp = get_spotify_client(request)
+        if not sp:
+            return {"status": "idle"}
+        user_id = sp.current_user()["id"]
+        request.session["user_id"] = user_id
+
     state = USER_BUILD_STATE.get(user_id)
+
+    print("BUILD_PROGRESS STATE:", state)
 
     if not state:
         return {"status": "idle"}

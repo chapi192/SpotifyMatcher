@@ -185,18 +185,19 @@ async function sendSelectionUpdate() {
     const progressData = await progressRes.json();
 
     if (progressData.status === "building") {
+
         const bar = document.getElementById("globalProgressBar");
         if (bar) bar.style.opacity = "1";
 
-        if (!pollingActive) {
-            progressCurrent = 0.02;
-            progressTarget = 0.02;
-        }
-
+        progressCurrent = 0.02;
+        progressTarget = 0.02;
         optimisticCap = 0;
         creepingActive = true;
 
         checkAndMaybeStartPolling();
+
+    } else {
+        resetProgressBar();
     }
 
     refreshNavGating();

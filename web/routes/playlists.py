@@ -14,7 +14,8 @@ def api_playlists(request: Request):
     if not sp:
         return {"error": "Not logged in"}
 
-    user_id = sp.current_user()["id"]
+    from web.spotify_auth import get_user_id
+    user_id = get_user_id(request)
 
     cache = PLAYLIST_CACHE.get(user_id)
     if cache and time.time() - cache["fetched_at"] < 300:
@@ -76,7 +77,8 @@ def update_selection(request: Request, data: dict = Body(...)):
 
     sp = get_spotify_client(request)
     if sp:
-        user_id = sp.current_user()["id"]
+        from web.spotify_auth import get_user_id
+        user_id = get_user_id(request)
         user_cache = PLAYLIST_DATA_CACHE.get(user_id, {})
 
         missing = [pid for pid in selected_ids if pid not in user_cache]
@@ -85,17 +87,31 @@ def update_selection(request: Request, data: dict = Body(...)):
 
             # Compute total tracks for missing playlists
             total_tracks = 0
+
+            playlist_cache = PLAYLIST_CACHE.get(user_id, {})
+            cached_playlists = playlist_cache.get("data", [])
+
+            # Build quick lookup map
+            track_lookup = {p["id"]: p["track_count"] for p in cached_playlists}
+
             for pid in missing:
-                if pid == "__liked__":
-                    meta = sp.current_user_saved_tracks(limit=1)
-                    total_tracks += meta["total"]
+                if pid in track_lookup:
+                    total_tracks += track_lookup[pid]
                 else:
-                    pl = sp.playlist(pid, fields="tracks.total")
-                    total_tracks += pl["tracks"]["total"]
+                    # Fallback safety (should rarely happen)
+                    if pid == "__liked__":
+                        meta = sp.current_user_saved_tracks(limit=1)
+                        total_tracks += meta["total"]
+                    else:
+                        pl = sp.playlist(pid, fields="tracks.total")
+                        total_tracks += pl["tracks"]["total"]
 
             BUILD_STATE.setdefault(user_id, {"version": 0})
             BUILD_STATE[user_id]["version"] += 1
             version = BUILD_STATE[user_id]["version"]
+
+            if BUILD_STATE.get(user_id, {}).get("version") != version:
+                return
 
             # Initialize progress state
             USER_BUILD_STATE[user_id] = {

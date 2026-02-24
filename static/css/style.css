@@ -1,5 +1,5 @@
 /* =========================================
-   GLOBAL
+   GLOBAL BASE
 ========================================= */
 
 body {
@@ -22,12 +22,15 @@ hr {
 .container {
     max-width: 1100px;
     margin: 0 auto;
-    padding: 60px 24px;
+    padding: 40px 24px;
     box-sizing: border-box;
+
+    height: calc(100vh - 1080px); /* subtract navbar height */
 }
 
+
 /* =========================================
-   NAVBAR (STICKY + FULL WIDTH PROGRESS)
+   NAVBAR
 ========================================= */
 
 .navbar {
@@ -45,7 +48,6 @@ hr {
     border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 
-/* Prevent purple visited links */
 .nav-links a,
 .nav-links a:visited,
 .nav-links a:active {
@@ -66,21 +68,20 @@ hr {
     cursor: wait;
 }
 
-/* Full-width progress bar */
 .global-progress {
     position: absolute;
     left: 0;
     bottom: 0;
     height: 3px;
     width: 0%;
-
     background: linear-gradient(90deg, #1DB954, #22d3ee);
     transition: opacity 0.2s ease;
     opacity: 0;
 }
 
+
 /* =========================================
-   BUTTONS
+   BUTTONS (GLOBAL)
 ========================================= */
 
 .btn {
@@ -104,8 +105,9 @@ hr {
     color: white;
 }
 
+
 /* =========================================
-   PLAYLIST GRID
+   PLAYLIST GRID (DASHBOARD DEFAULT)
 ========================================= */
 
 .playlist-grid {
@@ -114,8 +116,21 @@ hr {
     gap: 28px;
 }
 
+@media (max-width: 1200px) {
+    .playlist-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 900px) {
+    .playlist-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 600px) {
+    .playlist-grid { grid-template-columns: 1fr; }
+}
+
+
 /* =========================================
-   PLAYLIST CARD
+   PLAYLIST CARD (BASE)
 ========================================= */
 
 .playlist-card {
@@ -129,7 +144,6 @@ hr {
     position: relative;
     overflow: hidden;
 
-    /* Start hidden for first-load animation */
     opacity: 0;
     transform: translateY(15px);
 
@@ -141,8 +155,9 @@ hr {
     transform: translateY(-2px);
 }
 
+
 /* =========================================
-   CARD STATES
+   PLAYLIST CARD STATES
 ========================================= */
 
 .playlist-card.selected {
@@ -162,8 +177,9 @@ hr {
     background: #141414;
 }
 
+
 /* =========================================
-   CARD CONTENT
+   PLAYLIST CARD CONTENT
 ========================================= */
 
 .playlist-row-content {
@@ -173,8 +189,6 @@ hr {
     width: 100%;
     min-width: 0;
 }
-
-/* Cover */
 
 .playlist-cover {
     width: 80px;
@@ -201,8 +215,6 @@ hr {
     color: #B3B3B3;
 }
 
-/* Text */
-
 .playlist-info {
     display: flex;
     flex-direction: column;
@@ -226,8 +238,9 @@ hr {
     margin-top: 4px;
 }
 
+
 /* =========================================
-   CARD BUTTONS
+   PLAYLIST CARD ACTION BUTTONS
 ========================================= */
 
 .breakdown-btn,
@@ -265,56 +278,165 @@ hr {
     color: #1ed760;
 }
 
-/* =========================================
-   RESPONSIVE
-========================================= */
-
-@media (max-width: 1200px) {
-    .playlist-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
-}
-
-@media (max-width: 900px) {
-    .playlist-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media (max-width: 600px) {
-    .playlist-grid {
-        grid-template-columns: 1fr;
-    }
-}
 
 /* =========================================
    PLAYLIST ENTRY ANIMATION
 ========================================= */
 
 @keyframes playlistFadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(15px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(15px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 
 .playlist-card.animate-in {
     animation: playlistFadeIn 0.45s ease forwards;
 }
 
-/* Force visible when re-rendering */
 .playlist-card.no-animate {
     opacity: 1;
     transform: translateY(0);
     animation: none !important;
 }
 
+
 /* =========================================
-   WORKSPACE (uses existing playlist-card UI)
+   WORKSPACE — STRUCTURE
+========================================= */
+
+.ws-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 40px;
+    align-items: stretch;
+    height: 100%;
+}
+
+.ws-sidebar {
+    display: flex;
+    flex-direction: column;
+    /* gap: 2px; */
+    height: 100%;
+}
+
+.ws-main {
+    min-width: 0;
+}
+
+
+/* =========================================
+   WORKSPACE — METRIC BUTTONS
+========================================= */
+
+.ws-controls-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ws-metric-btn {
+    display: block;
+    width: 100%;
+    padding: 10px 14px;
+    text-align: left;
+    border-radius: 10px;
+    background: transparent;
+    border: none;
+    color: #9ca3af;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.ws-metric-btn:hover {
+    background: rgba(255,255,255,0.05);
+    color: white;
+}
+
+.active-metric {
+    background: #1DB954;
+    color: black;
+}
+
+
+/* =========================================
+   WORKSPACE — PLAYLIST LIST (SIDEBAR OVERRIDES)
+========================================= */
+
+.ws-sidebar {
+    overflow: hidden;
+}
+
+#wsPlaylistSection {
+    overflow-y: auto;
+    max-height: 350px;
+    flex: 1;
+    min-height: 0;
+}
+
+.ws-sidebar .playlist-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+}
+
+.ws-sidebar .playlist-card {
+    min-height: 56px;
+    padding: 6px 10px;
+    border-radius: 8px;
+}
+
+.ws-sidebar .playlist-cover {
+    width: 44px;
+    height: 44px;
+}
+
+.ws-sidebar .playlist-name {
+    font-size: 14px;
+}
+
+.ws-sidebar .playlist-count {
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+
+/* =========================================
+   WORKSPACE — ANALYTICS PANEL
+========================================= */
+
+#wsAnalyticsOutput,
+.ws-analytics {
+    background: linear-gradient(
+        180deg,
+        rgba(255,255,255,0.03),
+        rgba(255,255,255,0.02)
+    );
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+}
+
+#wsAnalyticsOutput {
+    transition: opacity 0.15s ease;
+}
+
+.ws-analytics {
+    padding: 20px;
+    min-height: 220px;
+}
+
+.ws-hero-number {
+    font-size: 48px;
+    font-weight: 700;
+    letter-spacing: -1px;
+}
+
+.ws-subtle {
+    opacity: 0.6;
+    font-size: 14px;
+}
+
+
+/* =========================================
+   WORKSPACE — SECTIONS & TOOLTIP
 ========================================= */
 
 .ws-section {
@@ -330,7 +452,7 @@ hr {
 }
 
 .ws-grid-tight {
-    gap: 18px; /* slightly tighter than dashboard if you want */
+    gap: 18px;
 }
 
 .ws-card-clickable {
@@ -339,6 +461,15 @@ hr {
 
 .ws-active {
     box-shadow: 0 0 0 2px #1DB954 inset;
+}
+
+.ws-section .playlist-card {
+    background: rgba(255,255,255,0.03);
+}
+
+.ws-card-clickable:hover {
+    transform: none;
+    background: rgba(255,255,255,0.05);
 }
 
 .ws-tooltip {
@@ -369,4 +500,79 @@ hr {
 .ws-tooltip:hover .ws-tooltip-text {
     visibility: visible;
     opacity: 1;
+}
+
+
+/* =========================================
+   WORKSPACE — SCROLLBAR
+========================================= */
+
+#wsPlaylistSection::-webkit-scrollbar {
+    width: 8px;
+}
+
+#wsPlaylistSection::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#wsPlaylistSection::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.15);
+    border-radius: 8px;
+}
+
+#wsPlaylistSection::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.25);
+}
+
+#wsPlaylistSection {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.2) transparent;
+}
+
+html, body {
+    height: 100%;
+}
+
+.ws-layout {
+    height: calc(100vh - 50px);
+}
+
+/* =========================================
+   WORKSPACE — INSIGHT GRID
+========================================= */
+
+.ws-insight-grid {
+    margin-top: 28px;
+    display: grid;
+    gap: 16px;
+}
+
+.ws-insight-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.04);
+}
+
+.ws-insight-label {
+    font-weight: 600;
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+.ws-insight-value {
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.ws-insight-value a {
+    color: #22d3ee;
+    text-decoration: none;
+}
+
+.ws-insight-value a:hover {
+    text-decoration: underline;
 }

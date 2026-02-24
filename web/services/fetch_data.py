@@ -57,9 +57,12 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None):
                 if not track:
                     continue
 
-                for artist in track["artists"]:
-                    if artist["id"] not in artist_cache:
-                        page_artist_ids.add(artist["id"])
+                for artist in track.get("artists", []):
+                    artist_id = artist.get("id")
+                    if not artist_id:
+                        continue
+                    if artist_id not in artist_cache:
+                        page_artist_ids.add(artist_id)
 
             if page_artist_ids:
                 artist_list = list(page_artist_ids)
@@ -68,10 +71,15 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None):
                     batch = artist_list[i:i + 50]
                     artist_results = safe_spotify_call(sp.artists, batch)
 
-                    for artist in artist_results["artists"]:
+                    for artist in artist_results.get("artists", []):
+                        if not artist:
+                            continue
+                        if not artist.get("id"):
+                            continue
+
                         artist_cache[artist["id"]] = {
-                            "genres": artist["genres"],
-                            "popularity": artist["popularity"]
+                            "genres": artist.get("genres", []),
+                            "popularity": artist.get("popularity")
                         }
 
             for item in page_items:
@@ -81,7 +89,9 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None):
 
                 track_artists = []
 
-                for a in track["artists"]:
+                for a in track.get("artists", []):
+                    if not a or not a.get("id"):
+                        continue
                     meta = artist_cache.get(a["id"], {})
                     track_artists.append({
                         "artist_id": a["id"],
@@ -89,6 +99,9 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None):
                         "genres": meta.get("genres", []),
                         "artist_popularity": meta.get("popularity")
                     })
+                album_data = track.get("album") or {}
+                external_urls = track.get("external_urls") or {}
+                spotify_url = external_urls.get("spotify")
 
                 playlist_tracks.append({
                     "track_id": track["id"],
@@ -99,12 +112,12 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None):
                     "track_number": track["track_number"],
                     "disc_number": track["disc_number"],
                     "preview_url": track["preview_url"],
-                    "spotify_url": track["external_urls"]["spotify"],
+                    "spotify_url": spotify_url,
                     "album": {
-                        "album_id": track["album"]["id"],
-                        "album_name": track["album"]["name"],
-                        "release_date": track["album"]["release_date"],
-                        "total_tracks": track["album"]["total_tracks"]
+                        "album_id": album_data.get("id"),
+                        "album_name": album_data.get("name"),
+                        "release_date": album_data.get("release_date"),
+                        "total_tracks": album_data.get("total_tracks")
                     },
                     "artists": track_artists
                 })
@@ -154,9 +167,12 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None):
                 if not track:
                     continue
 
-                for artist in track["artists"]:
-                    if artist["id"] not in artist_cache:
-                        page_artist_ids.add(artist["id"])
+                for artist in track.get("artists", []):
+                    artist_id = artist.get("id")
+                    if not artist_id:
+                        continue
+                    if artist_id not in artist_cache:
+                        page_artist_ids.add(artist_id)
 
             if page_artist_ids:
                 artist_list = list(page_artist_ids)
@@ -165,10 +181,15 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None):
                     batch = artist_list[i:i + 50]
                     artist_results = safe_spotify_call(sp.artists, batch)
 
-                    for artist in artist_results["artists"]:
+                    for artist in artist_results.get("artists", []):
+                        if not artist:
+                            continue
+                        if not artist.get("id"):
+                            continue
+
                         artist_cache[artist["id"]] = {
-                            "genres": artist["genres"],
-                            "popularity": artist["popularity"]
+                            "genres": artist.get("genres", []),
+                            "popularity": artist.get("popularity")
                         }
 
             for item in page_items:
@@ -178,7 +199,9 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None):
 
                 track_artists = []
 
-                for a in track["artists"]:
+                for a in track.get("artists", []):
+                    if not a or not a.get("id"):
+                        continue
                     meta = artist_cache.get(a["id"], {})
                     track_artists.append({
                         "artist_id": a["id"],
@@ -186,6 +209,9 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None):
                         "genres": meta.get("genres", []),
                         "artist_popularity": meta.get("popularity")
                     })
+                album_data = track.get("album") or {}
+                external_urls = track.get("external_urls") or {}
+                spotify_url = external_urls.get("spotify")
 
                 playlist_tracks.append({
                     "track_id": track["id"],
@@ -196,12 +222,12 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None):
                     "track_number": track["track_number"],
                     "disc_number": track["disc_number"],
                     "preview_url": track["preview_url"],
-                    "spotify_url": track["external_urls"]["spotify"],
+                    "spotify_url": spotify_url,
                     "album": {
-                        "album_id": track["album"]["id"],
-                        "album_name": track["album"]["name"],
-                        "release_date": track["album"]["release_date"],
-                        "total_tracks": track["album"]["total_tracks"]
+                        "album_id": album_data.get("id"),
+                        "album_name": album_data.get("name"),
+                        "release_date": album_data.get("release_date"),
+                        "total_tracks": album_data.get("total_tracks")
                     },
                     "artists": track_artists
                 })

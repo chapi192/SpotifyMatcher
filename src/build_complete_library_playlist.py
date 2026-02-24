@@ -61,7 +61,8 @@ def get_or_create_playlist(name):
             return pl["id"]
 
     print(f"Creating playlist '{name}'...")
-    user_id = sp.current_user()["id"]
+    from web.spotify_auth import get_user_id
+    user_id = get_user_id(request)
     created = sp.user_playlist_create(
         user=user_id,
         name=name,

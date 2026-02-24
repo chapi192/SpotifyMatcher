@@ -3,35 +3,66 @@
 
 <h2>Your Analysis Workspace</h2>
 
-<!-- Metric buttons ABOVE playlist cards -->
-<div class="ws-controls-row" style="margin: 18px 0 22px 0; display:flex; gap:12px; flex-wrap:wrap;">
-    <button class="btn" onclick="setMetric('avg-length')">Average Length</button>
-    <button class="btn" onclick="setMetric('popularity')">Popularity</button>
-    <button class="btn" onclick="setMetric('artist-frequency')">Artist Frequency</button>
-    <button class="btn" onclick="setMetric('release-years')">Release Years</button>
-    <button class="btn" onclick="setMetric('playlist-profile')">Playlist Profile</button>
-</div>
+<div class="ws-layout">
 
-<!-- PLAYLIST SECTIONS -->
-<div id="wsPlaylistSection"></div>
+    <!-- LEFT SIDEBAR -->
+    <div class="ws-sidebar">
 
-<hr style="margin: 34px 0; opacity: 0.2;">
+        <!-- METRICS -->
+        <div class="ws-controls-vertical">
 
-<!-- ANALYTICS OUTPUT -->
-<div id="wsAnalyticsOutput" style="
-    background:#111827;
-    padding:20px;
-    border-radius:14px;
-    min-height:220px;
-">
-    <p style="opacity:0.65; margin:0;">
-        Select a metric, then click <strong>Selected Playlists</strong> or an individual playlist card.
-    </p>
+            <button class="ws-metric-btn active-metric"
+                    onclick="setMetric('avg-length', this)">
+                Average Length
+            </button>
+
+            <button class="ws-metric-btn"
+                    onclick="setMetric('popularity', this)">
+                Popularity
+            </button>
+
+            <button class="ws-metric-btn"
+                    onclick="setMetric('artist-frequency', this)">
+                Artist Frequency
+            </button>
+
+            <button class="ws-metric-btn"
+                    onclick="setMetric('release-years', this)">
+                Release Years
+            </button>
+
+            <button class="ws-metric-btn"
+                    onclick="setMetric('playlist-profile', this)">
+                Playlist Profile
+            </button>
+
+        </div>
+
+        <hr style="margin:18px 0; opacity:0.15;">
+
+        <!-- PLAYLISTS WILL RENDER HERE -->
+        <div id="wsPlaylistSection"></div>
+
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="ws-main">
+
+        <div id="wsAnalyticsOutput" class="ws-analytics">
+            <p style="opacity:0.65; margin:0;">
+                Select a metric and playlist to begin.
+            </p>
+        </div>
+
+    </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
+let metricCache = {};
+let lastBuildVersion = null;
 let currentMetric = "avg-length";   // default
 let currentSelection = "combined";  // default
 
@@ -65,8 +96,6 @@ async function loadWorkspace() {
 
 function renderPlaylistSections(data) {
 
-    // NOTE: /api/library currently returns id/name/count only.
-    // We’ll render a placeholder cover. If you later add image_url, we’ll use it automatically.
     const coverHtml = (imageUrl) => {
         if (imageUrl) {
             return `<div class="playlist-cover"><img src="${imageUrl}" alt="cover"></div>`;
@@ -74,51 +103,70 @@ function renderPlaylistSections(data) {
         return `<div class="no-cover">♪</div>`;
     };
 
-    const selectionCard = `
-        <div class="playlist-card no-animate ws-card-clickable ws-active"
-             onclick="selectWorkspacePlaylist('combined', this)">
-            <div class="playlist-row-content">
-                ${coverHtml(null)}
-                <div class="playlist-info">
-                    <div class="playlist-name">Selected Playlists</div>
-                    <div class="playlist-count">${data.total_tracks} tracks • ${data.playlist_count} playlists</div>
+    let cards = [];
+
+    // ------------------------------------------------
+    // 1. Add "All" option if more than one playlist
+    // ------------------------------------------------
+    if (data.playlist_count > 1) {
+        cards.push(`
+            <div class="playlist-card no-animate ws-card-clickable ws-active"
+                 onclick="selectWorkspacePlaylist('combined', this)">
+                <div class="playlist-row-content">
+                    ${coverHtml(null)}
+                    <div class="playlist-info">
+                        <div class="playlist-name">All Selected</div>
+                        <div class="playlist-count">
+                            ${data.total_tracks} tracks • ${data.playlist_count} playlists
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    `;
+        `);
+    }
 
-    const individualCards = data.playlists.map(p => `
-        <div class="playlist-card no-animate ws-card-clickable"
-             onclick="selectWorkspacePlaylist('${p.playlist_id}', this)">
-            <div class="playlist-row-content">
-                ${coverHtml(p.image)}
-                <div class="playlist-info">
-                    <div class="playlist-name">${escapeHtml(p.playlist_name)}</div>
-                    <div class="playlist-count">${p.track_count} tracks</div>
+    // ------------------------------------------------
+    // 2. Add individual playlists
+    // ------------------------------------------------
+    data.playlists.forEach(p => {
+        cards.push(`
+            <div class="playlist-card no-animate ws-card-clickable"
+                 onclick="selectWorkspacePlaylist('${p.playlist_id}', this)">
+                <div class="playlist-row-content">
+                    ${coverHtml(p.image)}
+                    <div class="playlist-info">
+                        <div class="playlist-name">${escapeHtml(p.playlist_name)}</div>
+                        <div class="playlist-count">${p.track_count} tracks</div>
+                    </div>
                 </div>
             </div>
-        </div>
-    `).join("");
+        `);
+    });
 
+    // ------------------------------------------------
+    // 3. Render single unified section
+    // ------------------------------------------------
     document.getElementById("wsPlaylistSection").innerHTML = `
-        <div class="ws-section">
-            <div class="ws-section-title">Selection</div>
-            ${selectionCard}
-        </div>
-
-        <div class="ws-section">
-            <div class="ws-section-title">Individual Playlists</div>
-            <div class="playlist-grid ws-grid-tight">
-                ${individualCards}
-            </div>
+        <div class="playlist-grid ws-grid-tight">
+            ${cards.join("")}
         </div>
     `;
 
-    
+    if (data.playlist_count === 1) {
+        currentSelection = data.playlists[0].playlist_id;
+    }
 }
 
-function setMetric(metric) {
+function setMetric(metric, element) {
+
     currentMetric = metric;
+
+    // Highlight active metric
+    document.querySelectorAll(".ws-metric-btn")
+        .forEach(btn => btn.classList.remove("active-metric"));
+
+    if (element) element.classList.add("active-metric");
+
     maybeRenderAnalytics();
 }
 
@@ -154,10 +202,30 @@ async function maybeRenderAnalytics() {
     if (!currentMetric || !currentSelection) return;
 
     const out = document.getElementById("wsAnalyticsOutput");
+    
+    // Lock current height to prevent scroll jump
+    const currentHeight = out.offsetHeight;
+    out.style.minHeight = currentHeight + "px";
+
     out.innerHTML = `<p style="opacity:0.7; margin:0;">Loading <strong>${currentMetric}</strong>…</p>`;
 
-    const res = await fetch(`/api/${currentMetric}`);
-    const payload = await res.json();
+    // Check build state first
+    const navRes = await fetch("/api/nav-state");
+    const navData = await navRes.json();
+
+    // If build status changed, invalidate cache
+    if (lastBuildVersion !== navData.build_status) {
+        metricCache = {};
+        lastBuildVersion = navData.build_status;
+    }
+
+    // Fetch metric only if not cached
+    if (!metricCache[currentMetric]) {
+        const res = await fetch(`/api/${currentMetric}`);
+        metricCache[currentMetric] = await res.json();
+    }
+
+    const payload = metricCache[currentMetric];
 
     if (payload.status !== "ready") {
         out.innerHTML = `<p style="opacity:0.7; margin:0;">No data available (status: ${payload.status}).</p>`;
@@ -234,6 +302,11 @@ function renderPlaylistProfile(data) {
     `;
 
     renderGenreChart(data.genre_counts);
+
+    setTimeout(() => {
+        const out = document.getElementById("wsAnalyticsOutput");
+        out.style.minHeight = "";
+    }, 0);
 }
 
 function renderGenreChart(genreCounts) {
@@ -303,36 +376,45 @@ function renderAvgLength(data) {
             <canvas id="wsChart"></canvas>
         </div>
 
-        <div style="margin-top:30px; display:grid; gap:14px;">
-            <div>
-                <strong>Longest Track:</strong>
-                <a href="${data.longest_track.url}" target="_blank">
-                    ${escapeHtml(data.longest_track.name)}
-                </a>
-                (${formatTime(data.longest_track.seconds)})
+        <div class="ws-insight-grid">
+            <div class="ws-insight-row">
+                <span class="ws-insight-label">Longest Track</span>
+                <span class="ws-insight-value">
+                    <a href="${data.longest_track.url}" target="_blank">
+                        ${escapeHtml(data.longest_track.name)}
+                    </a>
+                    <span class="ws-subtle">(${formatTime(data.longest_track.seconds)})</span>
+                </span>
             </div>
 
-            <div>
-                <strong>Shortest Track:</strong>
-                <a href="${data.shortest_track.url}" target="_blank">
-                    ${escapeHtml(data.shortest_track.name)}
-                </a>
-                (${formatTime(data.shortest_track.seconds)})
+            <div class="ws-insight-row">
+                <span class="ws-insight-label">Shortest Track</span>
+                <span class="ws-insight-value">
+                    <a href="${data.shortest_track.url}" target="_blank">
+                        ${escapeHtml(data.shortest_track.name)}
+                    </a>
+                    <span class="ws-subtle">(${formatTime(data.shortest_track.seconds)})</span>
+                </span>
             </div>
 
-            <div>
-                <strong>Consistency:</strong>
-                ${consistency.label}
+            <div class="ws-insight-row">
+                <span class="ws-insight-label">Consistency</span>
+                <span class="ws-insight-value">${consistency.label}</span>
             </div>
 
-            <div>
-                <strong>Radio-Length Songs:</strong>
-                ${data.radio_pct}%
+            <div class="ws-insight-row">
+                <span class="ws-insight-label">Radio-Length Songs</span>
+                <span class="ws-insight-value">${data.radio_pct}%</span>
             </div>
         </div>
     `;
 
     renderHistogram(data.durations);
+
+    setTimeout(() => {
+        const out = document.getElementById("wsAnalyticsOutput");
+        out.style.minHeight = "";
+    }, 0);
 }
 
 function renderHistogram(durations) {
@@ -429,6 +511,11 @@ function renderPopularity(data) {
     `;
 
     renderPopularityHistogram(data.distribution);
+
+    setTimeout(() => {
+        const out = document.getElementById("wsAnalyticsOutput");
+        out.style.minHeight = "";
+    }, 0);
 }
 
 function popTierCard(label, pct) {
@@ -555,6 +642,11 @@ function renderArtistFrequency(data) {
             }
         }
     });
+
+    setTimeout(() => {
+        const out = document.getElementById("wsAnalyticsOutput");
+        out.style.minHeight = "";
+    }, 0);
 }
 
 function renderReleaseYears(data) {
@@ -607,6 +699,11 @@ function renderReleaseYears(data) {
             scales: { y: { beginAtZero: true } }
         }
     });
+
+    setTimeout(() => {
+        const out = document.getElementById("wsAnalyticsOutput");
+        out.style.minHeight = "";
+    }, 0);
 }
 
 function getConsistencyLabel(stdDev) {
