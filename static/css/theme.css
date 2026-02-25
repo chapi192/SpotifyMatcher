@@ -1,0 +1,19 @@
+/* =========================================
+   THEME VARIABLES
+========================================= */
+
+:root {
+    --bg-main: #030814;
+    --bg-card: #0c1725;
+    --bg-navbar: #0c1725;
+
+    --text-main: #e5e7eb;
+
+    --accent-green: #1DB954;
+    --accent-green-soft: rgba(29,185,84,0.5);
+
+    --accent-gold: #f59e0b;
+    --accent-gold-soft: rgba(245,158,11,0.6);
+
+    --accent-blue-glow: rgba(0,150,255,0.08);
+}

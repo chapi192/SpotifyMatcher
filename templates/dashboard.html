@@ -2,15 +2,14 @@
 
 {% block content %}
 
-<h2 style="font-size:32px;">Your Playlists</h2>
-
-<div style="margin-bottom:20px;">
+<div class="dashboard-header">
+    <h2>Your Playlists</h2>
     <button class="btn secondary" onclick="deselectAll()">
         Deselect All
     </button>
 </div>
 
-<hr style="margin:30px 0; opacity:0.2;">
+<hr style="margin:10px 0; opacity:0.2;">
 
 <div class="playlist-grid" id="playlistContainer"></div>
 
@@ -20,6 +19,8 @@
 <div class="playlist-grid" id="hiddenContainer"></div>
 
 <script>
+let hoverCooldownId = null;
+let cooldownUntilById = {};
 let selectionTimeout = null;
 let hiddenSet = new Set();
 let allPlaylists = [];
@@ -72,6 +73,15 @@ function renderPlaylists() {
 
         const card = document.createElement("div");
         card.className = "playlist-card";
+
+        const now = Date.now();
+        if (cooldownUntilById[p.id] && now < cooldownUntilById[p.id]) {
+            card.classList.add("cooldown");
+        }
+
+        if (hoverCooldownId === p.id) {
+            card.classList.add("cooldown");
+        }
         card.dataset.id = p.id;
 
         card.classList.add("fade-start");
@@ -93,8 +103,10 @@ function renderPlaylists() {
                 <div class="playlist-cover">
                     ${
                         p.image
-                        ? `<img src="${p.image}" />`
-                        : `<div class="no-cover">♪</div>`
+                            ? `<img src="${p.image}" />`
+                            : p.name.toLowerCase() === "liked songs"
+                                ? `<img src="https://misc.scdn.co/liked-songs/liked-songs-640.png" />`
+                                : `<div class="no-cover">♪</div>`
                     }
                 </div>
                 <div class="playlist-info">
@@ -102,8 +114,10 @@ function renderPlaylists() {
                     <div class="playlist-count">${p.track_count} songs</div>
                 </div>
             </div>
-            <button class="breakdown-btn">BREAKDOWN</button>
-            <button class="hide-bottom-btn">${isHidden ? "UNHIDE" : "HIDE"}</button>
+            <div class="playlist-card-buttons">
+                <button class="breakdown-btn">BREAKDOWN</button>
+                <button class="hide-bottom-btn">${isHidden ? "UNHIDE" : "HIDE"}</button>
+            </div>
         `;
 
         const hideBtn = card.querySelector(".hide-bottom-btn");
@@ -131,10 +145,28 @@ function renderPlaylists() {
 
         if (!isHidden) {
             card.addEventListener("click", () => {
-                if (selectedSet.has(p.id)) {
+
+                const wasSelected = selectedSet.has(p.id);
+
+                if (wasSelected) {
                     selectedSet.delete(p.id);
                     if (breakdownId === p.id) breakdownId = null;
-                } else selectedSet.add(p.id);
+
+                    // Set cooldown window for this card
+                    cooldownUntilById[p.id] = Date.now() + 800;
+
+                    // Re-render when cooldown ends so class gets removed
+                    setTimeout(() => {
+                        // Only clear if time truly passed (guards rapid clicking)
+                        if (cooldownUntilById[p.id] && Date.now() >= cooldownUntilById[p.id]) {
+                            delete cooldownUntilById[p.id];
+                            renderPlaylists();
+                        }
+                    }, 820);
+
+                } else {
+                    selectedSet.add(p.id);
+                }
 
                 renderPlaylists();
                 scheduleSelectionUpdate();

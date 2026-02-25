@@ -1,0 +1,217 @@
+/* =========================================
+   UNIVERSAL BUTTON SYSTEM
+========================================= */
+
+.btn,
+.playlist-card-buttons button {
+    font-size: 11px;
+    letter-spacing: 1px;
+    padding: 6px 12px;
+    background: transparent;
+    border: 1px solid;
+    cursor: pointer;
+    transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease;
+}
+
+.btn:hover,
+.playlist-card-buttons button:hover {
+    transform: translateY(-2px);
+}
+
+/* Green */
+.btn,
+.hide-bottom-btn {
+    border-color: var(--accent-green-soft);
+    color: var(--accent-green);
+}
+
+.btn:hover,
+.hide-bottom-btn:hover {
+    border-color: var(--accent-green);
+    box-shadow: 0 0 8px rgba(29,185,84,0.6);
+}
+
+/* Gold */
+.breakdown-btn {
+    border-color: var(--accent-gold-soft);
+    color: var(--accent-gold);
+}
+
+.breakdown-btn:hover {
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 8px rgba(245,158,11,0.6);
+}
+
+/* =========================================
+   CARD BUTTON ROW
+========================================= */
+
+.playlist-card-buttons {
+    display: flex;
+    justify-content: space-between; /* left + right */
+    align-items: center;
+    margin-top: 4px;
+}
+
+.breakdown-btn {
+    width: 100px;     /* EXACT match to image */
+    text-align: center;
+}
+
+/* Remove old absolute positioning if any exists */
+.playlist-card-buttons button {
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 4px 10px;
+}
+
+/* =========================================
+   PLAYLIST CARD — FILLED VERSION
+========================================= */
+
+.playlist-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+
+    padding: 2px 2px;   /* tighter */
+    min-height: auto;    /* remove fixed height */
+    gap: 2px;            /* tighter spacing */
+
+    background: var(--bg-card);
+    backdrop-filter: blur(4px);
+}
+
+/* layout */
+.playlist-row-content {
+    display: flex;
+    align-items: center;
+    gap: 14px;  /* slightly more horizontal breathing room */
+}
+
+/* Bigger image */
+.playlist-cover {
+    width: 100px;
+    height: 100px;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.playlist-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* text */
+.playlist-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    line-height: 1.2;
+    flex: 1;
+    padding-right: 12px;   /* 👈 breathing room */
+    min-width: 0;          /* VERY IMPORTANT */
+}
+
+.playlist-name {
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.15;
+    color: #e5e7eb;
+
+    display: -webkit-box;
+    -webkit-line-clamp: 2;     /* Max 2 lines */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.playlist-count {
+    font-size: 13px;
+    font-weight: 500;
+    color: #1DB954;
+    margin-top: 4px;
+}
+
+/* =========================================
+   TRACE SYSTEM
+========================================= */
+
+.playlist-card::before {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    pointer-events: none;
+    background-image:
+        linear-gradient(var(--accent-green), var(--accent-green)),
+        linear-gradient(var(--accent-green), var(--accent-green)),
+        linear-gradient(var(--accent-green), var(--accent-green)),
+        linear-gradient(var(--accent-green), var(--accent-green));
+    background-repeat: no-repeat;
+    background-position:
+        top left,
+        top right,
+        bottom right,
+        bottom left;
+    background-size:
+        0% 2px,
+        2px 0%,
+        0% 2px,
+        2px 0%;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+}
+
+@keyframes traceSquare {
+    0% { background-size: 0% 2px, 2px 0%, 0% 2px, 2px 0%; }
+    25% { background-size: 100% 2px, 2px 0%, 0% 2px, 2px 0%; }
+    50% { background-size: 100% 2px, 2px 100%, 0% 2px, 2px 0%; }
+    75% { background-size: 100% 2px, 2px 100%, 100% 2px, 2px 0%; }
+    100% { background-size: 100% 2px, 2px 100%, 100% 2px, 2px 100%; }
+}
+
+.playlist-card:not(.selected):not(.cooldown):hover::before {
+    opacity: 1;
+    animation: traceSquare 0.45s linear forwards;
+}
+
+.playlist-card.selected::before {
+    opacity: 1;
+    background-size:
+        100% 2px,
+        2px 100%,
+        100% 2px,
+        2px 100%;
+}
+
+/* Gold overlay */
+.playlist-card.breakdown.selected::after {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    pointer-events: none;
+    background-image:
+        linear-gradient(var(--accent-gold), var(--accent-gold)),
+        linear-gradient(var(--accent-gold), var(--accent-gold)),
+        linear-gradient(var(--accent-gold), var(--accent-gold)),
+        linear-gradient(var(--accent-gold), var(--accent-gold));
+    background-repeat: no-repeat;
+    background-position:
+        top left,
+        top right,
+        bottom right,
+        bottom left;
+    background-size:
+        100% 2px,
+        2px 100%,
+        100% 2px,
+        2px 100%;
+    opacity: 1;
+    transition: opacity 0.35s ease;
+}

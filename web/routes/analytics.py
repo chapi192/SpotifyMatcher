@@ -65,6 +65,17 @@ def avg_length(request: Request):
         long_pct = len([x for x in durations if x > 300]) / n * 100
         radio_pct = len([x for x in durations if 150 <= x <= 270]) / n * 100
 
+        # Total runtime (seconds)
+        total_runtime_seconds = sum(durations)
+
+        # Flow density: % of tracks within ±30 sec of average
+        flow_band = 30
+        flow_count = len([
+            x for x in durations
+            if abs(x - avg) <= flow_band
+        ])
+        flow_density = (flow_count / n) * 100
+
         # Find actual track objects
         shortest_track = min(tracks, key=lambda t: t["duration_ms"])
         longest_track = max(tracks, key=lambda t: t["duration_ms"])
@@ -78,6 +89,8 @@ def avg_length(request: Request):
             "long_pct": round(long_pct, 2),
             "radio_pct": round(radio_pct, 2),
             "durations": durations_sorted,
+            "total_runtime_seconds": round(total_runtime_seconds, 2),
+            "flow_density_pct": round(flow_density, 2),
             "shortest_track": {
                 "name": shortest_track["track_name"],
                 "seconds": round(min_v, 2),

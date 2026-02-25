@@ -1,0 +1,528 @@
+/* =========================================
+   WORKSPACE — LAYOUT
+========================================= */
+
+.workspace-page .ws-layout {
+    flex: 1;                 /* fills container */
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 40px;
+
+    overflow: hidden;        /* prevent spill */
+}
+
+.ws-sidebar {
+    display: flex;
+    flex-direction: column;
+
+    position: sticky;                 /* sidebar stays “locked” */
+    top: 0;
+
+    max-height: calc(100vh - 160px);  /* viewport cap (tunes scroll area) */
+    overflow: hidden;
+
+    padding-top: 0;
+}
+
+.ws-main {
+    min-width: 0;
+    min-height: 0;
+    overflow: visible;
+}
+
+/* =========================================
+   WORKSPACE — SIDEBAR MODULES
+========================================= */
+
+.ws-controls-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Metric buttons: match unified button language */
+.ws-metric-btn {
+    padding: 11px 14px;
+    background: rgba(255,255,255,0.015);
+    border: 1px solid rgba(255,255,255,0.07);
+    color: rgba(229,231,235,0.70);
+    font-weight: 650;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+
+    transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease,
+        background 0.15s ease;
+}
+
+.ws-metric-btn:hover {
+    transform: translateY(-2px);
+    border-color: rgba(29,185,84,0.70);
+    box-shadow: 0 0 10px rgba(29,185,84,0.35);
+    color: rgba(29,185,84,0.95);
+    background: rgba(29,185,84,0.06);
+}
+
+.ws-metric-btn.active-metric {
+    border-color: rgba(29,185,84,0.95);
+    color: rgba(29,185,84,1);
+    background: rgba(29,185,84,0.08);
+    box-shadow: 0 0 14px rgba(29,185,84,0.45);
+}
+
+/* =========================================
+   WORKSPACE — PLAYLIST LIST
+========================================= */
+
+#wsPlaylistSection {
+    flex: 1;
+    min-height: 0;          /* critical for flex scroll */
+    overflow-y: auto;
+
+    direction: rtl;         /* scrollbar left */
+    padding: 6px 10px 6px 14px;
+}
+
+#wsPlaylistSection > * {
+    direction: ltr;
+}
+
+/* reuse your playlist card style but make it "list mode" */
+.ws-sidebar .playlist-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+
+.ws-sidebar .playlist-card {
+    position: relative;
+    min-height: unset;
+    padding: 10px 10px;
+    gap: 8px;
+    background: rgba(255,255,255,0.015);
+    border: 1px solid rgba(255,255,255,0.06);
+}
+
+/* keep the compact horizontal row */
+.ws-sidebar .playlist-row-content {
+    gap: 10px;
+}
+
+.ws-sidebar .playlist-cover {
+    width: 58px;
+    height: 58px;
+}
+
+.ws-sidebar .playlist-name {
+    font-size: 13px;
+}
+
+.ws-sidebar .playlist-count {
+    font-size: 10px;
+}
+
+/* Active playlist in sidebar */
+.ws-sidebar .playlist-card.ws-active {
+    border-color: rgba(29,185,84,0.65);
+    box-shadow: 0 0 10px rgba(29,185,84,0.25);
+}
+
+/* If you want “All Selected” to pop slightly */
+.ws-sidebar .playlist-card.ws-summary {
+    border-color: rgba(29,185,84,0.35);
+    background: rgba(29,185,84,0.05);
+}
+
+#wsPlaylistSection {
+    direction: rtl;      /* flips scrollbar to left */
+    padding: 6px 10px 6px 14px; 
+}
+
+#wsPlaylistSection > * {
+    direction: ltr;      /* keeps content normal */
+}
+
+/* =========================================
+   WORKSPACE — ANALYTICS PANEL (MAIN)
+========================================= */
+
+.ws-analytics {
+    position: relative;
+
+    padding: 18px 20px;   /* was 22px 24px */
+
+    background: linear-gradient(
+        180deg,
+        rgba(255,255,255,0.03),
+        rgba(255,255,255,0.015)
+    );
+
+    border: 1px solid rgba(255,255,255,0.06);
+}
+
+/* subtle “module” separation */
+.ws-analytics + .ws-analytics {
+    margin-top: 16px;
+}
+
+.ws-hero-number {
+    font-size: 54px;
+    font-weight: 750;
+    letter-spacing: -1px;
+    line-height: 1;
+    margin-top: 4px;
+}
+
+.ws-subtle {
+    opacity: 0.65;
+    font-size: 14px;
+    margin-top: 6px;
+}
+
+/* Give the chart zone a boundary so it feels intentional */
+.ws-chart-wrap {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+/* =========================================
+   WORKSPACE — INSIGHTS
+========================================= */
+
+.ws-insight-grid {
+    margin-top: 18px;
+    display: grid;
+    gap: 10px;
+}
+
+.ws-insight-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+
+    padding: 10px 12px;  /* smaller */
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.05);
+
+    font-size: 13px; /* smaller text */
+}
+
+.ws-insight-row:hover {
+    border-color: rgba(29,185,84,0.35);
+    background: rgba(29,185,84,0.04);
+}
+
+.ws-insight-label {
+    font-weight: 650;
+    color: rgba(156,163,175,0.95);
+    font-size: 13px;
+    letter-spacing: 0.3px;
+}
+
+.ws-insight-value {
+    font-weight: 600;
+    text-align: right;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.ws-insight-value a {
+    color: #1DB954;
+    text-decoration: none;
+    display: inline-block;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ws-insight-value a:hover {
+    text-decoration: underline;
+}
+
+/* =========================================
+   WORKSPACE — SCROLLBAR
+========================================= */
+
+#wsPlaylistSection::-webkit-scrollbar {
+    width: 8px;
+}
+#wsPlaylistSection::-webkit-scrollbar-track {
+    background: transparent;
+}
+#wsPlaylistSection::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.16);
+    border-radius: 10px;
+}
+#wsPlaylistSection::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.26);
+}
+#wsPlaylistSection {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.20) transparent;
+}
+
+/* =========================================
+   WORKSPACE HEADER SPACING
+========================================= */
+
+.workspace-header {
+    margin-bottom: 28px;   /* match dashboard rhythm */
+}
+
+.workspace-page .container {
+    height: calc(100vh - 72px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;   /* prevents page scroll tail */
+}
+
+/* =========================================
+   WORKSPACE — Disable Hover Trace on Active
+========================================= */
+
+.ws-sidebar .playlist-card.ws-active:hover::before,
+.ws-sidebar .playlist-card.ws-active:hover::after {
+    animation: none !important;
+}
+
+.ws-sidebar .playlist-card.ws-active:hover {
+    border-color: rgba(29,185,84,0.65);
+    box-shadow: 0 0 10px rgba(29,185,84,0.25);
+}
+
+/* =========================================
+   AVG LENGTH — FULL WIDTH CHART
+========================================= */
+
+.ws-avg-full {
+    display: flex;
+    flex-direction: column;
+    position: relative;  
+}
+
+.ws-chart-overlay-wrap {
+    margin-top: 24px;
+
+    min-height: 420px;   /* was height */
+    padding: 28px 32px 48px 32px;
+
+    background: linear-gradient(
+        180deg,
+        rgba(255,255,255,0.02),
+        rgba(255,255,255,0.01)
+    );
+
+    border: 1px solid rgba(255,255,255,0.06);
+}
+
+/* =========================================
+   OVERLAY PANEL — CLEAN WHITE SYSTEM
+========================================= */
+
+.ws-chart-overlay {
+    position: absolute;
+
+    top: 0;
+    right: 40px;
+
+    width: 340px;
+
+    padding: 26px 28px;
+
+    background: rgba(12, 18, 30, 0.92);
+    backdrop-filter: blur(8px);
+
+    border: 1px solid rgba(255,255,255,0.08);
+
+    font-size: 15px;
+    z-index: 20;
+
+    cursor: grab;
+    user-select: none;
+}
+
+.ws-chart-overlay.dragging {
+    cursor: grabbing;
+}
+
+/* Rows */
+.ws-overlay-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 14px;
+}
+
+.ws-overlay-row:last-child {
+    margin-bottom: 0;
+}
+
+/* Labels now WHITE */
+.ws-overlay-row span:first-child {
+    color: #ffffff;
+    font-weight: 500;
+}
+
+/* Value wrapper */
+.ws-overlay-value {
+    display: flex;
+    gap: 6px;
+    align-items: baseline;
+    max-width: 65%;
+}
+
+/* Track title */
+.ws-overlay-title {
+    color: #1DB954;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 130px;
+    font-weight: 500;
+}
+
+.ws-overlay-title:hover {
+    text-decoration: underline;
+}
+
+.ws-overlay-time {
+    font-size: 14px;
+    color: #ffffff;
+    flex-shrink: 0;
+}
+
+.ws-side-panel {
+    width: 100%;
+    padding: 16px 18px;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.ws-side-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 14px;
+    font-size: 13px;
+}
+
+.ws-side-row:last-child {
+    margin-bottom: 0;
+}
+
+.ws-side-label {
+    opacity: 0.6;
+}
+
+.ws-side-value {
+    text-align: right;
+    max-width: 65%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ws-side-value a {
+    color: #1DB954;
+    text-decoration: none;
+}
+
+.ws-side-value a:hover {
+    text-decoration: underline;
+}
+
+/* =========================================
+   AVG HEADER — CLEAN INLINE SYSTEM
+========================================= */
+
+.ws-avg-header {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 28px;
+
+    padding-right: 380px;   /* matches overlay width + spacing */
+}
+
+.ws-avg-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.ws-avg-inline-number {
+    font-weight: 700;
+    color: #ffffff;
+}
+
+/* Subtitle row */
+.ws-avg-selection {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+}
+
+/* Selection name = white */
+.ws-selection-name {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+/* Track/playlist count = green */
+.ws-selection-meta {
+    color: #1DB954;
+    font-weight: 500;
+}
+
+/* Selection info (green system) */
+.ws-avg-selection {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+}
+
+.ws-selection-name {
+    color: #1DB954;
+    font-weight: 600;
+}
+
+.ws-selection-meta {
+    color: rgba(255,255,255,0.6);
+    font-size: 14px;
+}
+
+.ws-selection-link {
+    text-decoration: none;
+}
+
+.ws-selection-link:hover {
+    text-decoration: underline;
+}
+
+.ws-analytics-inner {
+    position: relative;
+}
+
+.ws-layer {
+    position: absolute;
+    inset: 0;
+    transition: opacity 0.18s ease;
+}
+
+.ws-layer.new {
+    opacity: 0;
+}
+
+.ws-layer.new.show {
+    opacity: 1;
+}
+
+.ws-layer.old.fade {
+    opacity: 0;
+}

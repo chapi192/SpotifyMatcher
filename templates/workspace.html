@@ -1,7 +1,12 @@
 {% extends "base.html" %}
+
+{% block body_class %}workspace-page{% endblock %}
+
 {% block content %}
 
-<h2>Your Analysis Workspace</h2>
+<div class="workspace-header">
+    <h2>Your Analysis Workspace</h2>
+</div>
 
 <div class="ws-layout">
 
@@ -47,13 +52,13 @@
 
     <!-- MAIN CONTENT -->
     <div class="ws-main">
-
-        <div id="wsAnalyticsOutput" class="ws-analytics">
-            <p style="opacity:0.65; margin:0;">
-                Select a metric and playlist to begin.
-            </p>
+        <div class="ws-analytics">
+            <div id="wsAnalyticsOutput" class="ws-analytics-inner">
+                <p style="opacity:0.65; margin:0;">
+                    Select a metric and playlist to begin.
+                </p>
+            </div>
         </div>
-
     </div>
 
 </div>
@@ -62,7 +67,7 @@
 
 <script>
 let metricCache = {};
-let lastBuildVersion = null;
+let workspaceBuildVersion = null;
 let currentMetric = "avg-length";   // default
 let currentSelection = "combined";  // default
 
@@ -76,6 +81,10 @@ function resetWsChart() {
 }
 
 async function loadWorkspace() {
+
+    const navRes = await fetch("/api/nav-state");
+    const navData = await navRes.json();
+    workspaceBuildVersion = navData.build_status;
 
     const res = await fetch("/api/library");
     const data = await res.json();
@@ -92,6 +101,32 @@ async function loadWorkspace() {
     if (selectionCard) selectionCard.classList.add("ws-active");
 
     maybeRenderAnalytics();
+}
+
+function crossfadeAnalytics(html) {
+    const container = document.getElementById("wsAnalyticsOutput");
+
+    const oldLayer = container.querySelector(".ws-layer");
+
+    const newLayer = document.createElement("div");
+    newLayer.className = "ws-layer new";
+    newLayer.innerHTML = html;
+
+    container.appendChild(newLayer);
+
+    // Trigger fade-in for new
+    requestAnimationFrame(() => {
+        newLayer.classList.add("show");
+    });
+
+    if (oldLayer) {
+        oldLayer.classList.add("old");
+        oldLayer.classList.add("fade");
+
+        setTimeout(() => {
+            oldLayer.remove();
+        }, 200);
+    }
 }
 
 function renderPlaylistSections(data) {
@@ -201,23 +236,7 @@ function selectWorkspacePlaylist(pid, element) {
 async function maybeRenderAnalytics() {
     if (!currentMetric || !currentSelection) return;
 
-    const out = document.getElementById("wsAnalyticsOutput");
-    
-    // Lock current height to prevent scroll jump
-    const currentHeight = out.offsetHeight;
-    out.style.minHeight = currentHeight + "px";
-
-    out.innerHTML = `<p style="opacity:0.7; margin:0;">Loading <strong>${currentMetric}</strong>…</p>`;
-
-    // Check build state first
-    const navRes = await fetch("/api/nav-state");
-    const navData = await navRes.json();
-
-    // If build status changed, invalidate cache
-    if (lastBuildVersion !== navData.build_status) {
-        metricCache = {};
-        lastBuildVersion = navData.build_status;
-    }
+    const inner = document.getElementById("wsAnalyticsOutput");
 
     // Fetch metric only if not cached
     if (!metricCache[currentMetric]) {
@@ -228,45 +247,40 @@ async function maybeRenderAnalytics() {
     const payload = metricCache[currentMetric];
 
     if (payload.status !== "ready") {
-        out.innerHTML = `<p style="opacity:0.7; margin:0;">No data available (status: ${payload.status}).</p>`;
+        inner.innerHTML = `<p style="opacity:0.7;">No data available.</p>`;
         return;
     }
 
     const selectedData =
         currentSelection === "combined"
-        ? payload.data.combined
-        : payload.data.playlists[currentSelection];
+            ? payload.data.combined
+            : payload.data.playlists[currentSelection];
 
     if (!selectedData) {
-        out.innerHTML = `<p style="opacity:0.7; margin:0;">No profile available for this playlist.</p>`;
+        inner.innerHTML = `<p style="opacity:0.7;">No profile available.</p>`;
         return;
     }
 
-    if (currentMetric === "avg-length") {
-        renderAvgLength(selectedData);
-        return;
-    }
+    // Fade only AFTER data ready
+    inner.classList.add("fade-out");
 
-    if (currentMetric === "popularity") {
-        renderPopularity(selectedData);
-        return;
-    }
+    setTimeout(() => {
 
-    if (currentMetric === "artist-frequency") {
-        renderArtistFrequency(selectedData);
-        return;
-    }
+        inner.classList.remove("fade-out");
 
-    if (currentMetric === "release-years") {
-        renderReleaseYears(selectedData);
-        return;
-    }
+        if (currentMetric === "avg-length") {
+            renderAvgLength(selectedData);
+        } else if (currentMetric === "popularity") {
+            renderPopularity(selectedData);
+        } else if (currentMetric === "artist-frequency") {
+            renderArtistFrequency(selectedData);
+        } else if (currentMetric === "release-years") {
+            renderReleaseYears(selectedData);
+        } else if (currentMetric === "playlist-profile") {
+            renderPlaylistProfile(selectedData);
+        }
 
-    if (currentMetric === "playlist-profile") {
-        renderPlaylistProfile(selectedData);
-        return;
-    }
-    out.innerHTML = `<pre style="margin:0; white-space:pre-wrap;">${escapeHtml(JSON.stringify(selectedData, null, 2))}</pre>`;
+    }, 90);
 }
 
 function renderPlaylistProfile(data) {
@@ -358,69 +372,188 @@ function formatTime(seconds) {
 function renderAvgLength(data) {
 
     const out = document.getElementById("wsAnalyticsOutput");
-
     const consistency = getConsistencyLabel(data.std_dev_seconds);
+    const timeCommitmentLabel = getTimeCommitmentLabel(data.total_runtime_seconds);
+    const flowLabel = getFlowDensityLabel(data.flow_density_pct);
 
     out.innerHTML = `
-        <div style="margin-bottom:24px;">
-            <div style="font-size:14px; opacity:0.6;">Average Track Length</div>
-            <div style="font-size:42px; font-weight:700;">
-                ${formatTime(data.average_length_seconds)}
-            </div>
-            <div style="opacity:0.7;">
-                ${data.track_count} tracks • Median ${formatTime(data.median_length_seconds)}
-            </div>
-        </div>
+        <div class="ws-avg-full">
 
-        <div style="position:relative; height:260px;">
-            <canvas id="wsChart"></canvas>
-        </div>
+           <div class="ws-avg-header">
 
-        <div class="ws-insight-grid">
-            <div class="ws-insight-row">
-                <span class="ws-insight-label">Longest Track</span>
-                <span class="ws-insight-value">
-                    <a href="${data.longest_track.url}" target="_blank">
-                        ${escapeHtml(data.longest_track.name)}
-                    </a>
-                    <span class="ws-subtle">(${formatTime(data.longest_track.seconds)})</span>
-                </span>
+                <div class="ws-avg-title">
+                    Average Track Length:
+                    <span class="ws-avg-inline-number">
+                        ${formatTime(data.average_length_seconds)}
+                    </span>
+                </div>
+
+                <div class="ws-avg-selection">
+                    ${
+                        currentSelection === "combined"
+                            ? `
+                                <span class="ws-selection-name">
+                                    All Selected
+                                </span>
+                                <span class="ws-selection-meta">
+                                    ${data.track_count} tracks • ${data.playlist_count || "Multiple"} playlists
+                                </span>
+                            `
+                            : `
+                            <a 
+                                href="https://open.spotify.com/playlist/${currentSelection}" 
+                                target="_blank"
+                                class="ws-selection-name ws-selection-link"
+                            >
+                                ${escapeHtml(data.playlist_name || "")}
+                            </a>
+                                <span class="ws-selection-meta">
+                                    ${data.track_count} tracks
+                                </span>
+                            `
+                    }
+                </div>
+
             </div>
 
-            <div class="ws-insight-row">
-                <span class="ws-insight-label">Shortest Track</span>
-                <span class="ws-insight-value">
-                    <a href="${data.shortest_track.url}" target="_blank">
-                        ${escapeHtml(data.shortest_track.name)}
-                    </a>
-                    <span class="ws-subtle">(${formatTime(data.shortest_track.seconds)})</span>
-                </span>
-            </div>
+            <div class="ws-chart-overlay-wrap">
+                <canvas id="wsChart"></canvas>
 
-            <div class="ws-insight-row">
-                <span class="ws-insight-label">Consistency</span>
-                <span class="ws-insight-value">${consistency.label}</span>
-            </div>
+                <div class="ws-chart-overlay">
 
-            <div class="ws-insight-row">
-                <span class="ws-insight-label">Radio-Length Songs</span>
-                <span class="ws-insight-value">${data.radio_pct}%</span>
-            </div>
+                    <div class="ws-overlay-row">
+                        <span>Commitment</span>
+                        <span>
+                            ${timeCommitmentLabel}
+                            (${formatTotalRuntime(data.total_runtime_seconds)})
+                        </span>
+                    </div>
+
+                    <div class="ws-overlay-row">
+                        <span>Flow Density</span>
+                        <span>
+                            ${flowLabel}
+                            (${data.flow_density_pct}%)
+                        </span>
+                    </div>
+
+                    <div class="ws-overlay-row">
+                        <span>Consistency</span>
+                        <span>${consistency.label}</span>
+                    </div>
+
+                    <div class="ws-overlay-row">
+                        <span>Radio %</span>
+                        <span>${data.radio_pct}%</span>
+                    </div>
+
+                    <div class="ws-overlay-row">
+                        <span>Median</span>
+                        <span>${formatTime(data.median_length_seconds)}</span>
+                    </div>
+
+                    <div class="ws-overlay-row">
+                        <span>Longest</span>
+                        <div class="ws-overlay-value">
+                            <a href="${data.longest_track.url}" target="_blank" class="ws-overlay-title">
+                                ${escapeHtml(data.longest_track.name)}
+                            </a>
+                            <span class="ws-overlay-time">
+                                (${formatTime(data.longest_track.seconds)})
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="ws-overlay-row">
+                        <span>Shortest</span>
+                        <div class="ws-overlay-value">
+                            <a href="${data.shortest_track.url}" target="_blank" class="ws-overlay-title">
+                                ${escapeHtml(data.shortest_track.name)}
+                            </a>
+                            <span class="ws-overlay-time">
+                                (${formatTime(data.shortest_track.seconds)})
+                            </span>
+                        </div>
+                    </div>
+
+                </div>
+
         </div>
     `;
+
+    setTimeout(makeOverlayDraggable, 0);
 
     renderHistogram(data.durations);
 
     setTimeout(() => {
-        const out = document.getElementById("wsAnalyticsOutput");
         out.style.minHeight = "";
     }, 0);
 }
 
-function renderHistogram(durations) {
-    resetWsChart();
+function makeOverlayDraggable() {
+    const overlay = document.querySelector(".ws-chart-overlay");
+    const container = document.querySelector(".ws-avg-full");
 
-    const bucketSize = 30; // seconds
+    if (!overlay || !container) return;
+
+    let isDragging = false;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    const STORAGE_KEY = "wsOverlayPosition";
+
+    // 🔹 Restore saved position
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+        const { left, top } = JSON.parse(saved);
+        overlay.style.left = left + "px";
+        overlay.style.top = top + "px";
+        overlay.style.right = "auto";
+    }
+
+    overlay.addEventListener("mousedown", (e) => {
+        isDragging = true;
+        overlay.classList.add("dragging");
+
+        const rect = overlay.getBoundingClientRect();
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
+    });
+
+    document.addEventListener("mousemove", (e) => {
+        if (!isDragging) return;
+
+        const containerRect = container.getBoundingClientRect();
+
+        let newLeft = e.clientX - containerRect.left - offsetX;
+        let newTop = e.clientY - containerRect.top - offsetY;
+
+        const maxLeft = containerRect.width - overlay.offsetWidth;
+        const maxTop = containerRect.height - overlay.offsetHeight;
+
+        newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+        newTop = Math.max(0, Math.min(newTop, maxTop));
+
+        overlay.style.left = newLeft + "px";
+        overlay.style.top = newTop + "px";
+        overlay.style.right = "auto";
+
+        // 🔹 Save position
+        localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify({ left: newLeft, top: newTop })
+        );
+    });
+
+    document.addEventListener("mouseup", () => {
+        isDragging = false;
+        overlay.classList.remove("dragging");
+    });
+}
+
+function renderHistogram(durations) {
+
+    const bucketSize = 30;
     const buckets = {};
 
     durations.forEach(sec => {
@@ -440,16 +573,86 @@ function renderHistogram(durations) {
     const values = sortedBuckets.map(k => buckets[k]);
 
     const ctx = document.getElementById("wsChart").getContext("2d");
+    const inner = document.getElementById("wsAnalyticsOutput");
 
-    wsChartInstance = new Chart(ctx, {
+    // 🔹 If existing chart → shrink first
+    if (wsChartInstance) {
+
+        // Shrink bars
+        wsChartInstance.data.datasets[0].data =
+            wsChartInstance.data.datasets[0].data.map(() => 0);
+
+        wsChartInstance.update();
+
+        setTimeout(() => {
+
+            // Fade card while swapping
+            inner.classList.add("fade-out");
+
+            setTimeout(() => {
+
+                wsChartInstance.destroy();
+
+                wsChartInstance = buildHistogram(ctx, labels, values);
+
+                inner.classList.remove("fade-out");
+                inner.classList.add("fade-in");
+
+                setTimeout(() => {
+                    inner.classList.remove("fade-in");
+                }, 120);
+
+            }, 80);
+
+        }, 120);
+
+        return;
+    }
+
+    wsChartInstance = buildHistogram(ctx, labels, values);
+}
+function buildHistogram(ctx, labels, values) {
+
+    return new Chart(ctx, {
         type: "bar",
         data: {
-            labels: labels,
-            datasets: [{ data: values }]
+            labels,
+            datasets: [{
+                data: values,
+                backgroundColor: "rgba(29,185,84,0.8)",
+                borderColor: "rgba(29,185,84,1)",
+                borderWidth: 1
+            }]
         },
         options: {
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true } }
+            responsive: true,
+            maintainAspectRatio: false,
+            devicePixelRatio: window.devicePixelRatio || 1,
+
+            animation: {
+                duration: 350,
+                easing: "easeOutCubic"
+            },
+
+            layout: {
+                padding: { bottom: 20 }
+            },
+
+            plugins: {
+                legend: { display: false }
+            },
+
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: "rgba(255,255,255,0.7)" },
+                    grid: { color: "rgba(255,255,255,0.05)" }
+                },
+                x: {
+                    ticks: { color: "rgba(255,255,255,0.7)" },
+                    grid: { color: "rgba(255,255,255,0.03)" }
+                }
+            }
         }
     });
 }
@@ -704,6 +907,33 @@ function renderReleaseYears(data) {
         const out = document.getElementById("wsAnalyticsOutput");
         out.style.minHeight = "";
     }, 0);
+}
+
+function getTimeCommitmentLabel(totalSeconds) {
+    const hours = totalSeconds / 3600;
+
+    if (hours < 1) return   "Quick Session";
+    if (hours < 2) return   "Casual Listen";
+    if (hours < 4) return   "Extended Play";
+    if (hours < 8) return   "Work Day";
+    if (hours < 16) return  "Weekend Bop";
+    if (hours < 100) return "Serious Investment";
+    if (hours < 400) return "Epic Journey";
+    return                  "Year-Long Listen";
+}
+
+function getFlowDensityLabel(pct) {
+    if (pct >= 60) return "Strong Flow";
+    if (pct >= 40) return "Balanced Structure";
+    return "Dynamic Structure";
+}
+
+function formatTotalRuntime(totalSeconds) {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+
+    if (hours === 0) return `${minutes} min`;
+    return `${hours}h ${minutes}m`;
 }
 
 function getConsistencyLabel(stdDev) {

@@ -1,0 +1,102 @@
+/* =========================================
+   GLOBAL BASE
+========================================= */
+
+body {
+    margin: 0;
+    font-family: "Inter", "Segoe UI", sans-serif;
+    background: var(--bg-main);
+    color: var(--text-main);
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(
+            circle at 50% 0%,
+            var(--accent-blue-glow),
+            transparent 60%
+        );
+}
+
+h2 {
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-size: 40px;
+    margin-bottom: 26px;
+    position: relative;
+    display: inline-block;   /* IMPORTANT */
+    margin: 0;
+    padding-bottom: 8px;
+}
+
+h2::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;            /* spans full title */
+    height: 3px;
+    background: #1DB954;
+}
+
+hr {
+    border: none;
+    border-top: 1px solid rgba(29,185,84,0.2);
+}
+
+.container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 50px 40px;
+    box-sizing: border-box;
+}
+
+/* =========================================
+   NAVBAR
+========================================= */
+
+.navbar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    padding: 16px 32px;
+    background: var(--bg-navbar);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nav-links a {
+    color: var(--text-main);
+    text-decoration: none;
+    margin-left: 20px;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.nav-links a:hover {
+    color: var(--accent-green);
+}
+
+.nav-disabled {
+    pointer-events: none;
+    opacity: 0.3;
+}
+
+.global-progress {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 3px;
+    width: 0%;
+    background: var(--accent-green);
+    box-shadow:
+        0 0 10px var(--accent-green),
+        0 0 20px rgba(29,185,84,0.6);
+}
+
