@@ -4,8 +4,6 @@ from spotipy.oauth2 import SpotifyOAuth
 import spotipy
 from fastapi import Request
 
-print("CLIENT_ID:", os.getenv("SPOTIFY_CLIENT_ID"))
-
 SCOPES = [
     "user-read-private",
     "user-read-email",
