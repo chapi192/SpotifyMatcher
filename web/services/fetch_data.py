@@ -77,9 +77,12 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None):
                         if not artist.get("id"):
                             continue
 
+                        images = artist.get("images") or []
+                        image_url = images[0]["url"] if images else None
+
                         artist_cache[artist["id"]] = {
                             "genres": artist.get("genres", []),
-                            "popularity": artist.get("popularity")
+                            "image_url": image_url
                         }
 
             for item in page_items:
@@ -97,7 +100,7 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None):
                         "artist_id": a["id"],
                         "artist_name": a["name"],
                         "genres": meta.get("genres", []),
-                        "artist_popularity": meta.get("popularity")
+                        "image_url": meta.get("image_url"),
                     })
                 album_data = track.get("album") or {}
                 external_urls = track.get("external_urls") or {}
@@ -187,9 +190,12 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None):
                         if not artist.get("id"):
                             continue
 
+                        images = artist.get("images") or []
+                        image_url = images[0]["url"] if images else None
+
                         artist_cache[artist["id"]] = {
                             "genres": artist.get("genres", []),
-                            "popularity": artist.get("popularity")
+                            "image_url": image_url
                         }
 
             for item in page_items:
@@ -207,7 +213,7 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None):
                         "artist_id": a["id"],
                         "artist_name": a["name"],
                         "genres": meta.get("genres", []),
-                        "artist_popularity": meta.get("popularity")
+                        "image_url": meta.get("image_url"),
                     })
                 album_data = track.get("album") or {}
                 external_urls = track.get("external_urls") or {}

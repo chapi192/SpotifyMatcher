@@ -1,3 +1,5 @@
+from itertools import count
+
 from fastapi import APIRouter, Request
 from web.spotify_auth import get_spotify_client
 from web.routes.library import get_active_dataset_and_profiles
@@ -276,18 +278,49 @@ def artist_frequency(request: Request):
 
     def compute_artist_metrics(tracks):
 
-        counts = {}
+        import math
+
         total_tracks = 0
+        total_artist_instances = 0
+        max_artists_on_track = 0
+        multi_artist_tracks = 0
+        max_artist_track = None
+
+        counts = {}
+        artist_meta_lookup = {}
 
         for track in tracks:
             total_tracks += 1
-            for artist in track.get("artists", []):
-                name = artist.get("artist_name")
-                if not name:
-                    continue
-                counts[name] = counts.get(name, 0) + 1
 
-        if not counts:
+            track_artists = track.get("artists", [])
+            artist_count_on_track = len(track_artists)
+
+            total_artist_instances += artist_count_on_track
+
+            if artist_count_on_track > max_artists_on_track:
+                max_artists_on_track = artist_count_on_track
+                max_artist_track = track
+
+            if artist_count_on_track > 1:
+                multi_artist_tracks += 1
+
+            for artist in track_artists:
+                artist_id = artist.get("artist_id")
+                artist_name = artist.get("artist_name")
+
+                if not artist_id or not artist_name:
+                    continue
+
+                counts[artist_id] = counts.get(artist_id, 0) + 1
+
+                # store metadata once
+                if artist_id not in artist_meta_lookup:
+                    artist_meta_lookup[artist_id] = {
+                        "artist_name": artist_name,
+                        "image_url": artist.get("image_url")
+                    }
+
+        if not counts or total_artist_instances == 0:
             return None
 
         sorted_artists = sorted(
@@ -296,28 +329,114 @@ def artist_frequency(request: Request):
             reverse=True
         )
 
-        top_10 = sorted_artists[:10]
-        top_5_total = sum(c for _, c in sorted_artists[:5])
-        top_1_total = sorted_artists[0][1]
+        unique_artists = len(sorted_artists)
 
-        dominance_pct = round(top_1_total / total_tracks * 100, 1)
-        concentration_pct = round(top_5_total / total_tracks * 100, 1)
+        # ---------------------------------
+        # Top Artist
+        # ---------------------------------
 
-        long_tail_count = len([c for _, c in sorted_artists if c == 1])
-        long_tail_pct = round(long_tail_count / len(sorted_artists) * 100, 1)
+        top_artist_id = sorted_artists[0][0]
+        top_artist_count = sorted_artists[0][1]
 
-        artist_density = round(len(sorted_artists) / total_tracks, 2)
+        top_artist_name = artist_meta_lookup[top_artist_id]["artist_name"]
+
+        # we assume artist_id is available in track["artists"]
+        top_artist_id = None
+        for track in tracks:
+            for artist in track.get("artists", []):
+                if artist.get("artist_name") == top_artist_name:
+                    top_artist_id = artist.get("artist_id")
+                    break
+            if top_artist_id:
+                break
+
+        dominance_pct = round(top_artist_count / total_artist_instances * 100, 1)
+
+        # ---------------------------------
+        # Long Tail
+        # ---------------------------------
+
+        artists_1x = len([c for _, c in sorted_artists if c == 1])
+        unique_appearance_pct = round(artists_1x / unique_artists * 100, 1)
+
+        # ---------------------------------
+        # Diversity + Concentration
+        # ---------------------------------
+
+        entropy = 0
+        hhi = 0
+
+        for _, count in sorted_artists:
+            p = count / total_artist_instances
+            entropy += -p * math.log(p)
+            hhi += p ** 2
+
+        max_entropy = math.log(unique_artists) if unique_artists > 1 else 1
+        diversity_score = round((entropy / max_entropy) * 100, 1)
+
+        concentration_value = hhi * 100
+
+        # categorical mapping
+        if concentration_value < 2:
+            concentration = "Very Diverse"
+        elif concentration_value < 5:
+            concentration = "Diverse"
+        elif concentration_value < 10:
+            concentration = "Balanced"
+        elif concentration_value < 25:
+            concentration = "Leaning"
+        else:
+            concentration = "Dominated"
+
+        # ---------------------------------
+        # Averages
+        # ---------------------------------
+
+        avg_tracks_per_artist = round(total_artist_instances / unique_artists, 2)
+        avg_artists_per_track = round(total_artist_instances / total_tracks, 2)
+        multi_artist_track_pct = round(multi_artist_tracks / total_tracks * 100, 1)
+
+        # ---------------------------------
+        # Max Artist Track Info
+        # ---------------------------------
+
+        max_artist_track_name = None
+        max_artist_track_id = None
+
+        if max_artist_track:
+            max_artist_track_name = max_artist_track.get("track_name")
+            max_artist_track_id = max_artist_track.get("track_id")
 
         return {
             "track_count": total_tracks,
-            "unique_artists": len(sorted_artists),
-            "artist_density": artist_density,
+            "unique_artists": unique_artists,
+
+            "diversity_score": diversity_score,
+            "concentration": concentration,
+
+            "top_artist_name": top_artist_name,
+            "top_artist_id": top_artist_id,
             "dominance_pct": dominance_pct,
-            "concentration_pct": concentration_pct,
-            "long_tail_pct": long_tail_pct,
+
+            "unique_appearance_pct": unique_appearance_pct,
+
+            "avg_tracks_per_artist": avg_tracks_per_artist,
+
+            "avg_artists_per_track": avg_artists_per_track,
+            "multi_artist_track_pct": multi_artist_track_pct,
+
+            "max_artists_on_track": max_artists_on_track,
+            "max_artist_track_name": max_artist_track_name,
+            "max_artist_track_id": max_artist_track_id,
+
             "top_10": [
-                {"artist_name": n, "count": c}
-                for n, c in top_10
+                {
+                    "artist_id": artist_id,
+                    "artist_name": artist_meta_lookup[artist_id]["artist_name"],
+                    "count": count,
+                    "image_url": artist_meta_lookup[artist_id]["image_url"]
+                }
+                for artist_id, count in sorted_artists[:10]
             ]
         }
 
