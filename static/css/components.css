@@ -7,9 +7,12 @@
     font-size: 11px;
     letter-spacing: 1px;
     padding: 6px 12px;
+
     background: transparent;
     border: 1px solid;
+
     cursor: pointer;
+
     transition:
         transform 0.15s ease,
         box-shadow 0.15s ease,
@@ -52,17 +55,17 @@
 
 .playlist-card-buttons {
     display: flex;
-    justify-content: space-between; /* left + right */
+    justify-content: space-between;
     align-items: center;
     margin-top: 4px;
 }
 
 .breakdown-btn {
-    width: 100px;     /* EXACT match to image */
+    width: 100px;
     text-align: center;
 }
 
-/* Remove old absolute positioning if any exists */
+/* tighten legacy overrides */
 .playlist-card-buttons button {
     font-size: 10px;
     letter-spacing: 1px;
@@ -79,22 +82,20 @@
     flex-direction: column;
     justify-content: space-between;
 
-    padding: 2px 2px;   /* tighter */
-    min-height: auto;    /* remove fixed height */
-    gap: 2px;            /* tighter spacing */
+    padding: 2px 2px;
+    min-height: auto;
+    gap: 2px;
 
     background: var(--bg-card);
     backdrop-filter: blur(4px);
 }
 
-/* layout */
 .playlist-row-content {
     display: flex;
     align-items: center;
-    gap: 14px;  /* slightly more horizontal breathing room */
+    gap: 14px;
 }
 
-/* Bigger image */
 .playlist-cover {
     width: 100px;
     height: 100px;
@@ -108,15 +109,16 @@
     object-fit: cover;
 }
 
-/* text */
 .playlist-info {
     display: flex;
     flex-direction: column;
     justify-content: center;
+
     line-height: 1.2;
     flex: 1;
-    padding-right: 12px;   /* 👈 breathing room */
-    min-width: 0;          /* VERY IMPORTANT */
+
+    padding-right: 12px;
+    min-width: 0;
 }
 
 .playlist-name {
@@ -126,8 +128,9 @@
     color: #e5e7eb;
 
     display: -webkit-box;
-    -webkit-line-clamp: 2;     /* Max 2 lines */
+    -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
+
     overflow: hidden;
     text-overflow: ellipsis;
 }
@@ -135,7 +138,7 @@
 .playlist-count {
     font-size: 13px;
     font-weight: 500;
-    color: #1DB954;
+    color: var(--accent-green);
     margin-top: 4px;
 }
 
@@ -148,22 +151,26 @@
     position: absolute;
     inset: -3px;
     pointer-events: none;
+
     background-image:
         linear-gradient(var(--accent-green), var(--accent-green)),
         linear-gradient(var(--accent-green), var(--accent-green)),
         linear-gradient(var(--accent-green), var(--accent-green)),
         linear-gradient(var(--accent-green), var(--accent-green));
+
     background-repeat: no-repeat;
     background-position:
         top left,
         top right,
         bottom right,
         bottom left;
+
     background-size:
         0% 2px,
         2px 0%,
         0% 2px,
         2px 0%;
+
     opacity: 0;
     transition: opacity 0.35s ease;
 }
@@ -190,28 +197,32 @@
         2px 100%;
 }
 
-/* Gold overlay */
+/* Gold overlay for breakdown selected */
 .playlist-card.breakdown.selected::after {
     content: "";
     position: absolute;
     inset: -3px;
     pointer-events: none;
+
     background-image:
         linear-gradient(var(--accent-gold), var(--accent-gold)),
         linear-gradient(var(--accent-gold), var(--accent-gold)),
         linear-gradient(var(--accent-gold), var(--accent-gold)),
         linear-gradient(var(--accent-gold), var(--accent-gold));
+
     background-repeat: no-repeat;
     background-position:
         top left,
         top right,
         bottom right,
         bottom left;
+
     background-size:
         100% 2px,
         2px 100%,
         100% 2px,
         2px 100%;
+
     opacity: 1;
     transition: opacity 0.35s ease;
 }

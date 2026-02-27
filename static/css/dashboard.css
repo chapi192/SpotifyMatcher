@@ -4,9 +4,9 @@
 
 .playlist-grid {
     display: grid;
-    grid-template-columns: repeat(5, 280px); /* fixed width */
+    grid-template-columns: repeat(5, 280px);
     gap: 28px;
-    justify-content: center; /* center whole grid */
+    justify-content: center;
 }
 
 @media (max-width: 1200px) {
@@ -28,6 +28,6 @@
 .dashboard-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;   /* NOT flex-end */
-    margin-bottom: 18px;   /* tighter */
+    align-items: center;
+    margin-bottom: 18px;
 }

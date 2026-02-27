@@ -3,6 +3,14 @@ import { escapeHtml } from "../utils.js";
 import { wsChartInstance } from "../state.js";
 
 let currentArtistChartType = "bar";
+let currentActiveArtistLabel = null;
+
+function truncateText(str, maxLength = 30) {
+    if (!str) return "";
+    return str.length > maxLength
+        ? str.slice(0, maxLength - 1) + "…"
+        : str;
+}
 
 export function renderArtistFrequency(data, currentSelection) {
     const out = document.getElementById("wsAnalyticsOutput");
@@ -88,7 +96,7 @@ export function renderArtistFrequency(data, currentSelection) {
                     <div class="ws-artist-label">Max Artists On Track</div>
                     <div class="ws-artist-value">
                         <a href="https://open.spotify.com/track/${data.max_artist_track_id}" target="_blank">
-                            ${escapeHtml(data.max_artist_track_name)}
+                            ${truncateText(escapeHtml(data.max_artist_track_name), 40)}
                         </a>
                         <span>(${data.max_artists_on_track})</span>
                     </div>
@@ -145,12 +153,22 @@ function renderArtistChart(data) {
     function setActiveArtistFromItem(item, color, imgEl) {
         if (!item || !activeImg || !activeName || !activeMeta) return;
 
+        currentActiveArtistLabel = item.label;  // <--- add this
+
         activeImg.innerHTML = "";
         if (imgEl) activeImg.appendChild(imgEl.cloneNode());
 
         activeName.textContent = item.label;
         activeName.href = `https://open.spotify.com/artist/${item.artist_id || ""}`;
-                
+
+        const trackCount = item.value || 0;
+        const percent = data.track_count
+            ? ((trackCount / data.track_count) * 100).toFixed(1)
+            : 0;
+
+        activeMeta.textContent =
+            `Appears on ${trackCount} tracks • ${percent}% of playlist`;
+
         const finalColor = ensureReadableColor(color || "#000000");
         activeName.style.setProperty("--artistColor", finalColor);
     }
@@ -168,31 +186,93 @@ function renderArtistChart(data) {
     const imageCache = new Map();
 
     function extractDominantColor(img) {
-        const c = document.createElement("canvas");
-        const cx = c.getContext("2d");
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
 
-        c.width = 40;
-        c.height = 40;
+        const size = 50;
+        canvas.width = size;
+        canvas.height = size;
 
-        cx.drawImage(img, 0, 0, 40, 40);
-        const pixels = cx.getImageData(0, 0, 40, 40).data;
+        ctx.drawImage(img, 0, 0, size, size);
+        const pixels = ctx.getImageData(0, 0, size, size).data;
 
-        let r = 0, g = 0, b = 0, count = 0;
+        const buckets = new Map();
 
-        for (let i = 0; i < pixels.length; i += 16) {
-            r += pixels[i];
-            g += pixels[i + 1];
-            b += pixels[i + 2];
-            count++;
+        function isNearWhite(r, g, b) {
+            return r > 235 && g > 235 && b > 235;
         }
 
-        r = Math.round(r / count);
-        g = Math.round(g / count);
-        b = Math.round(b / count);
+        function isNearBlack(r, g, b) {
+            return r < 20 && g < 20 && b < 20;
+        }
 
-        return `rgb(${r}, ${g}, ${b})`;
+        function rgbToHsl(r, g, b) {
+            r /= 255; g /= 255; b /= 255;
+            const max = Math.max(r,g,b), min = Math.min(r,g,b);
+            let h, s, l = (max + min) / 2;
+
+            if (max === min) {
+                h = s = 0;
+            } else {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+                switch (max) {
+                    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                    case g: h = (b - r) / d + 2; break;
+                    case b: h = (r - g) / d + 4; break;
+                }
+
+                h /= 6;
+            }
+
+            return { h, s, l };
+        }
+
+        for (let i = 0; i < pixels.length; i += 16) {
+            let r = pixels[i];
+            let g = pixels[i + 1];
+            let b = pixels[i + 2];
+
+            if (isNearWhite(r,g,b) || isNearBlack(r,g,b)) continue;
+
+            // quantize
+            r = Math.round(r / 20) * 20;
+            g = Math.round(g / 20) * 20;
+            b = Math.round(b / 20) * 20;
+
+            const key = `${r},${g},${b}`;
+            buckets.set(key, (buckets.get(key) || 0) + 1);
+        }
+
+        let bestColor = null;
+        let bestScore = 0;
+
+        for (const [key, count] of buckets.entries()) {
+            const [r,g,b] = key.split(",").map(Number);
+            const { s, l } = rgbToHsl(r,g,b);
+
+            // Penalize very dark colors
+            const lightnessWeight = l < 0.2 ? 0.4 : 1;
+
+            // Prefer saturated colors
+            const saturationWeight = s * 1.8;
+
+            const score = count * (1 + saturationWeight) * lightnessWeight;
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestColor = key;
+            }
+        }
+
+        if (bestColor) {
+            return `rgb(${bestColor})`;
+        }
+
+        return "rgb(29,185,84)";
     }
-
+    
     function isColorDark(rgbString) {
         const match = rgbString.match(/\d+/g);
         if (!match) return false;
@@ -262,7 +342,13 @@ function renderArtistChart(data) {
                     datasets: [{
                         data: values,
                         backgroundColor: colors,
-                        borderRadius: 4
+                        borderRadius: 4,
+
+                        borderWidth: 1,
+                        borderColor: "rgba(0,0,0,0.35)",
+
+                        hoverBorderWidth: 2,
+                        hoverBorderColor: "#1DB954",
                     }]
                 },
                 options: {
@@ -296,12 +382,19 @@ function renderArtistChart(data) {
 
             setChartInstance(chart);
 
-            // default active = top artist
             if (treeData.length) {
-                const first = treeData[0];
-                const imgEl = imageCache.get(first.label);
-                const color = artistColorMap.get(first.label) || "#1DB954";
-                setActiveArtistFromItem(first, color, imgEl);
+
+                let target = treeData[0];
+
+                if (currentActiveArtistLabel) {
+                    const match = treeData.find(a => a.label === currentActiveArtistLabel);
+                    if (match) target = match;
+                }
+
+                const imgEl = imageCache.get(target.label);
+                const color = artistColorMap.get(target.label) || "#1DB954";
+
+                setActiveArtistFromItem(target, color, imgEl);
             }
 
             const activeCard = document.querySelector(".ws-artist-active");
@@ -327,6 +420,8 @@ function renderArtistChart(data) {
                     spacing: 3,
                     borderWidth: 2,
                     borderColor: "rgba(0,0,0,0.35)",
+
+                    hoverBorderWidth: 2,
                     hoverBorderColor: "#1DB954",
                     backgroundColor(context) {
                         const raw = context?.raw;
@@ -374,12 +469,20 @@ function renderArtistChart(data) {
         });
 
         setChartInstance(chart);
-
+                
         if (treeData.length) {
-            const first = treeData[0];
-            const imgEl = imageCache.get(first.label);
-            const color = artistColorMap.get(first.label) || "#1DB954";
-            setActiveArtistFromItem(first, color, imgEl);
+
+            let target = treeData[0];
+
+            if (currentActiveArtistLabel) {
+                const match = treeData.find(a => a.label === currentActiveArtistLabel);
+                if (match) target = match;
+            }
+
+            const imgEl = imageCache.get(target.label);
+            const color = artistColorMap.get(target.label) || "#1DB954";
+
+            setActiveArtistFromItem(target, color, imgEl);
         }
     });
 }
