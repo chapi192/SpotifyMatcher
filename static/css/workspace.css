@@ -794,10 +794,9 @@
     text-decoration: underline;
 }
 
-/* header row */
 .ws-artist-header-row {
     display: flex;
-    align-items: baseline;
+    align-items: center;  
     gap: 14px;
     width: 100%;
 }
@@ -995,4 +994,339 @@
 
 .ws-artist-full .ws-avg-header {
     padding-right: 0 !important;
+}
+
+.ws-avg-header {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.ws-avg-selection {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+    line-height: 1.2;   /* 👈 normalize */
+}
+
+/* =========================================
+   RELEASE YEARS (DECADES)
+========================================= */
+
+.ws-decade-hero {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 40px;
+
+    margin: 24px 0 32px 0;
+    padding: 22px 28px;
+
+    background: var(--surface-bg-soft);
+    border: 1px solid var(--surface-border);
+}
+
+.ws-decade-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ws-decade-label {
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    opacity: 0.6;
+}
+
+.ws-decade-value {
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.ws-decade-chart {
+    position: relative;
+    height: 420px;
+
+    padding: 28px 32px 36px 32px;
+
+    background: var(--surface-bg-soft);
+    border: 1px solid var(--surface-border);
+}
+
+.ws-decade-active {
+    margin-top: 18px;
+    transition: opacity 180ms ease;
+}
+
+.ws-decade-active-title {
+    font-size: 20px;
+    font-weight: 750;
+    letter-spacing: 0.5px;
+}
+
+.ws-decade-active-meta {
+    font-size: 13px;
+    opacity: 0.7;
+    margin-top: 4px;
+}
+
+/* =========================================
+   RELEASE YEARS
+========================================= */
+
+.ws-release-chart {
+    position: relative;
+    height: 460px;
+    padding: 28px 32px 36px 32px;
+    background: var(--surface-bg-soft);
+    border: 1px solid var(--surface-border);
+}
+
+.ws-release-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ws-release-active {
+    margin-top: 18px;
+}
+
+.ws-release-active-title {
+    font-size: 20px;
+    font-weight: 750;
+}
+
+.ws-release-active-meta {
+    font-size: 13px;
+    opacity: 0.7;
+    margin-top: 4px;
+}
+
+/* =========================================
+   RELEASE YEARS REFACTOR
+========================================= */
+
+.ws-release-layout {
+    display: grid;
+    grid-template-columns: minmax(0,1fr);
+}
+
+.ws-release-chart {
+    position: relative;
+    height: 460px;
+    padding: 28px 32px 36px 32px;
+    background: var(--surface-bg-soft);
+    border: 1px solid var(--surface-border);
+}
+
+.ws-release-toggle-group {
+    display: flex;
+    gap: 10px;
+}
+
+.ws-release-active {
+    margin-top: 6px;
+}
+
+.ws-release-active-title {
+    font-size: 20px;
+    font-weight: 750;
+}
+
+.ws-release-active-meta {
+    font-size: 13px;
+    opacity: 0.7;
+    margin-top: 4px;
+}
+/* =========================================
+   RELEASE YEARS — LAYOUT
+========================================= */
+
+.ws-release-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 28px;
+}
+
+.ws-release-left {
+    min-width: 0;
+}
+
+.ws-release-right {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    height: 100%;
+}
+
+.ws-release-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.ws-release-active {
+    margin-top: auto; /* pushes active card to bottom */
+}
+
+
+/* =========================================
+   RELEASE YEARS — CHART
+========================================= */
+
+.ws-release-chart {
+    position: relative;
+    height: 500px;
+
+    padding: 16px; /* reduced from 28px+ */
+
+    background: var(--surface-bg-soft);
+    border: 1px solid var(--surface-border);
+}
+
+.ws-release-chart canvas {
+    display: block;
+}
+
+
+/* =========================================
+   RELEASE YEARS — HEADER
+========================================= */
+
+.ws-release-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+
+/* =========================================
+   RELEASE YEARS — ACTIVE BLOCK
+========================================= */
+
+.ws-release-active-title {
+    font-size: 20px;
+    font-weight: 750;
+}
+
+.ws-release-active-meta {
+    font-size: 13px;
+    color: #ffffff;
+    opacity: 1;
+}
+
+
+/* =========================================
+   RELEASE YEARS — CONTROLS
+========================================= */
+
+.ws-release-controls {
+    display: flex;
+    gap: 14px;
+}
+
+.ws-release-controls .ws-swap-btn {
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: rgba(255, 255, 255, 0.65);
+    background: transparent;
+    transition: all 180ms ease;
+}
+
+.ws-release-controls .ws-swap-btn:hover:not(:disabled) {
+    border-color: rgba(255, 255, 255, 0.4);
+    color: #ffffff;
+}
+
+.ws-btn-active {
+    border-color: #1DB954 !important;
+    color: #1DB954 !important;
+}
+
+.ws-release-controls .ws-swap-btn:disabled {
+    cursor: default;
+}
+
+
+/* =========================================
+   LEGACY DECADE HERO (if still used)
+   Safe to remove if unused
+========================================= */
+
+.ws-decade-hero {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 40px;
+
+    margin: 24px 0 32px 0;
+    padding: 22px 28px;
+
+    background: var(--surface-bg-soft);
+    border: 1px solid var(--surface-border);
+}
+
+.ws-decade-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ws-decade-label {
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    opacity: 0.6;
+}
+
+.ws-decade-value {
+    font-size: 22px;
+    font-weight: 700;
+}
+
+/* Prevent container blink during metric swap */
+.ws-metric-fading {
+    opacity: 0;
+    transition: opacity 180ms ease;
+}
+
+/* =========================================
+   RELEASE YEARS — HELP ICON
+========================================= */
+
+.ws-release-controls {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.ws-release-controls .ws-panel-help {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 12px;
+    font-weight: 600;
+
+    color: rgba(255,255,255,0.75);
+    cursor: pointer;
+
+    transition: all 160ms ease;
+}
+
+.ws-release-controls .ws-panel-help:hover {
+    border-color: #1DB954;
+    color: #1DB954;
+}
+
+.ws-release-controls .ws-panel-help {
+    position: relative !important;
+    top: auto;
+    left: auto;
+}
+
+.ws-artist-header-row {
+    margin-top: -5px;
 }

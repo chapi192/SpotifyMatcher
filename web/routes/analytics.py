@@ -486,6 +486,9 @@ def release_years(request: Request):
 
     def compute_year_metrics(tracks):
 
+        oldest_track = None
+        newest_track = None
+
         years = []
 
         for track in tracks:
@@ -505,6 +508,23 @@ def release_years(request: Request):
         newest = max(years)
         median_year = int(statistics.median(years))
         span = newest - oldest
+
+        for track in tracks:
+            release_date = track.get("album", {}).get("release_date")
+            if release_date and len(release_date) >= 4:
+                year = int(release_date[:4])
+
+                if year == oldest and not oldest_track:
+                    oldest_track = {
+                        "name": track.get("name"),
+                        "url": track.get("external_urls", {}).get("spotify")
+                    }
+
+                if year == newest and not newest_track:
+                    newest_track = {
+                        "name": track.get("name"),
+                        "url": track.get("external_urls", {}).get("spotify")
+                    }
 
         # Decade buckets
         decade_counts = {}
@@ -527,7 +547,9 @@ def release_years(request: Request):
             "newest_year": newest,
             "median_year": median_year,
             "year_span": span,
-            "recency_score": recency_score
+            "recency_score": recency_score, 
+            "oldest_track": oldest_track,
+            "newest_track": newest_track
         }
 
     combined_tracks = []

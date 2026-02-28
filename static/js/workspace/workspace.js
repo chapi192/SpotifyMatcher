@@ -6,7 +6,7 @@ import { renderArtistFrequency } from "./metrics/artistFrequency.js";
 import { renderReleaseYears } from "./metrics/releaseYears.js";
 import { renderPlaylistProfile } from "./metrics/playlistProfile.js";
 import { renderPlaylistSections, wireWorkspaceGlobals } from "./ui.js";
-import { wsChartInstance } from "./state.js";
+import { wsChartInstance, clearChartInstance } from "./state.js";
 import { initTooltipSystem } from "./tooltip.js";
 
 async function loadWorkspace() {
@@ -50,71 +50,76 @@ async function loadWorkspace() {
 
 async function animateOutCurrentMetric() {
 
-    const output = document.getElementById("wsAnalyticsOutput");
+    if (!wsChartInstance) return;
 
-    const animations = [];
+    const chart = wsChartInstance;
 
-    if (wsChartInstance) {
-
-        if (wsChartInstance.config.type === "treemap") {
-            const chartWrap = document.querySelector(".ws-artist-chart");
-
-            if (chartWrap) {
-                chartWrap.classList.add("ws-shrinking");
-
-                animations.push(
-                    new Promise(resolve => setTimeout(resolve, 180))
-                );
-            }
-
-            await Promise.all(animations);
-            return;
-        }
-
-        const chart = wsChartInstance;
+    // ===============================
+    // CARTESIAN CHARTS (bar, line)
+    // ===============================
+    if (chart.scales?.y) {
 
         const currentMax = chart.scales.y.max;
 
-        // Lock axis range
         chart.options.scales.y.min = 0;
         chart.options.scales.y.max = currentMax;
 
         chart.update();
 
-        // Now shrink bars
+        chart.data.datasets.forEach(ds => {
+            if (Array.isArray(ds.data)) {
+                ds.data = ds.data.map(() => 0);
+            }
+        });
+
+        chart.update();
+
+        await new Promise(resolve => setTimeout(resolve, 300));
+        clearChartInstance();
+        return;
+    }
+
+    // ===============================
+    // POLAR AREA
+    // ===============================
+    if (chart.config?.type === "polarArea") {
+
+        const scale = chart.scales?.r;
+        const currentMax = scale?.max;
+
+        if (scale) {
+            chart.options.scales.r.min = 0;
+            chart.options.scales.r.max = currentMax;
+            chart.update();
+        }
+
         chart.data.datasets.forEach(ds => {
             ds.data = ds.data.map(() => 0);
         });
 
         chart.update();
 
-        animations.push(
-            new Promise(resolve => setTimeout(resolve, 350))
-        );
+        await new Promise(resolve => setTimeout(resolve, 300));
+        clearChartInstance();
+        return;
     }
 
-    const activeCard = output.querySelector(".ws-artist-active");
-    if (activeCard) {
-        activeCard.classList.add("ws-fading");
+    // ===============================
+    // DOUGHNUT / PIE
+    // ===============================
+    if (chart.config?.type === "doughnut" ||
+        chart.config?.type === "pie") {
 
-        animations.push(
-            new Promise(resolve => setTimeout(resolve, 180))
-        );
+        chart.data.datasets.forEach(ds => {
+            ds.data = ds.data.map(() => 0);
+        });
+
+        chart.update();
+
+        await new Promise(resolve => setTimeout(resolve, 300));
+        clearChartInstance();
+        return;
     }
-
-    // --- Heat bar shrink ---
-    const heatFill = output.querySelector(".heat-fill");
-
-    if (heatFill) {
-        heatFill.style.height = "0%";
-
-        animations.push(
-            new Promise(resolve => setTimeout(resolve, 350))
-        );
-    }
-
-    // Wait for both simultaneously
-    await Promise.all(animations);
 }
 
 async function maybeRenderAnalytics() {
@@ -124,6 +129,8 @@ async function maybeRenderAnalytics() {
     const payloadPromise = fetchMetric(currentMetric);
     await animateOutCurrentMetric();
     const payload = await payloadPromise;
+
+    const output = document.getElementById("wsAnalyticsOutput");
 
     if (!payload || payload.status !== "ready") {
         document.getElementById("wsAnalyticsOutput").innerHTML =
@@ -149,9 +156,9 @@ async function maybeRenderAnalytics() {
     } else if (currentMetric === "artist-frequency") {
         renderArtistFrequency(selectedData, currentSelection);
     } else if (currentMetric === "release-years") {
-        renderReleaseYears(selectedData);
+        renderReleaseYears(selectedData, currentSelection);
     } else if (currentMetric === "playlist-profile") {
-        renderPlaylistProfile(selectedData);
+        renderPlaylistProfile(selectedData, currentSelection);
     }
 }
 
