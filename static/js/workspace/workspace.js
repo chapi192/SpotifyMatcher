@@ -5,6 +5,7 @@ import { renderPopularity } from "./metrics/popularity.js";
 import { renderArtistFrequency } from "./metrics/artistFrequency.js";
 import { renderReleaseYears } from "./metrics/releaseYears.js";
 import { renderPlaylistProfile } from "./metrics/playlistProfile.js";
+import { renderGenres } from "./metrics/genres.js";
 import { renderPlaylistSections, wireWorkspaceGlobals } from "./ui.js";
 import { wsChartInstance, clearChartInstance } from "./state.js";
 import { initTooltipSystem } from "./tooltip.js";
@@ -159,6 +160,8 @@ async function maybeRenderAnalytics() {
         renderReleaseYears(selectedData, currentSelection);
     } else if (currentMetric === "playlist-profile") {
         renderPlaylistProfile(selectedData, currentSelection);
+    } else if (currentMetric === "genres") {
+        renderGenres(selectedData, currentSelection);
     }
 }
 

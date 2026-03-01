@@ -226,3 +226,17 @@
     opacity: 1;
     transition: opacity 0.35s ease;
 }
+
+/* =========================================
+   SURFACE UTILITIES
+========================================= */
+
+.surface-soft {
+    background: var(--surface-bg-soft);
+    border: 1px solid var(--surface-border);
+}
+
+.surface-strong {
+    background: var(--surface-bg-strong);
+    border: 1px solid var(--surface-border);
+}

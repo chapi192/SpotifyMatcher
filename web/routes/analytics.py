@@ -709,3 +709,193 @@ def playlist_profile(request: Request):
             "playlists": per_playlist
         }
     }
+
+# ------------------------------------------------------------
+# Genres
+# ------------------------------------------------------------
+
+@router.get("/api/genres")
+def genres(request: Request):
+
+    result, err = get_dataset(request)
+    if err:
+        return err
+
+    dataset, _profiles = result
+
+    import math
+
+    def compute_genre_metrics(tracks):
+
+        track_count = 0
+        genre_counts = {}
+
+        multi_genre_tracks = 0
+        max_genres_on_track = 0
+        max_genre_track = None
+
+        for track in tracks:
+            track_count += 1
+
+            # Build unique genre set for this track from its artists
+            track_genres = set()
+
+            for artist in track.get("artists", []):
+                for g in artist.get("genres", []):
+                    if g:
+                        track_genres.add(g)
+
+            # Count per-track genre appearances (deduped per track)
+            for g in track_genres:
+                genre_counts[g] = genre_counts.get(g, 0) + 1
+
+            # Multi-genre track logic
+            if len(track_genres) > 1:
+                multi_genre_tracks += 1
+
+            # Genre-dense track logic
+            if len(track_genres) > max_genres_on_track:
+                max_genres_on_track = len(track_genres)
+                max_genre_track = track
+
+        if not genre_counts or track_count == 0:
+            return None
+
+        sorted_genres = sorted(
+            genre_counts.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )
+
+        unique_genres = len(sorted_genres)
+
+        # ---------------------------------
+        # Top genre
+        # ---------------------------------
+
+        top_genre, top_count = sorted_genres[0]
+        top_genre_pct = round((top_count / track_count) * 100, 1)
+
+        # ---------------------------------
+        # Dominance gap (skip ties)
+        # ---------------------------------
+
+        second_distinct_count = None
+
+        for _, count in sorted_genres[1:]:
+            if count < top_count:
+                second_distinct_count = count
+                break
+
+        if second_distinct_count is not None:
+            dominance_gap = round(
+                (top_count - second_distinct_count) / track_count * 100,
+                1
+            )
+        else:
+            dominance_gap = 0
+            
+        # ---------------------------------
+        # Diversity + Concentration
+        # ---------------------------------
+
+        entropy = 0
+        hhi = 0
+
+        for _, count in sorted_genres:
+            p = count / track_count
+            entropy += -p * math.log(p)
+            hhi += p ** 2
+
+        max_entropy = math.log(unique_genres) if unique_genres > 1 else 1
+        diversity_score = round((entropy / max_entropy) * 100, 1)
+
+        concentration_value = hhi * 100
+
+        if concentration_value < 2:
+            concentration = "Very Diverse"
+        elif concentration_value < 5:
+            concentration = "Diverse"
+        elif concentration_value < 10:
+            concentration = "Balanced"
+        elif concentration_value < 25:
+            concentration = "Leaning"
+        else:
+            concentration = "Dominated"
+
+        # ---------------------------------
+        # Additional metrics
+        # ---------------------------------
+
+        avg_tracks_per_genre = round(track_count / unique_genres, 2)
+
+        multi_genre_track_pct = round(
+            (multi_genre_tracks / track_count) * 100,
+            1
+        )
+
+        max_genre_track_name = None
+        max_genre_track_id = None
+
+        if max_genre_track:
+            max_genre_track_name = max_genre_track.get("track_name")
+            max_genre_track_id = max_genre_track.get("track_id")
+
+        return {
+            "track_count": track_count,
+            "unique_genres": unique_genres,
+
+            "diversity_score": diversity_score,
+            "concentration": concentration,
+
+            "top_genre": top_genre,
+            "top_genre_pct": top_genre_pct,
+            "dominance_gap": dominance_gap,
+
+            "avg_tracks_per_genre": avg_tracks_per_genre,
+            "multi_genre_track_pct": multi_genre_track_pct,
+
+            "max_genres_on_track": max_genres_on_track,
+            "max_genre_track_name": max_genre_track_name,
+            "max_genre_track_id": max_genre_track_id,
+
+            "top_10": [
+                {"genre": g, "count": c}
+                for g, c in sorted_genres[:10]
+            ]
+        }
+
+    # ---------------------------------
+    # Per-playlist
+    # ---------------------------------
+
+    per_playlist = {}
+    combined_tracks = []
+
+    for pid, playlist in dataset.items():
+
+        tracks = playlist.get("tracks", [])
+
+        stats = compute_genre_metrics(tracks)
+        if not stats:
+            continue
+
+        per_playlist[pid] = {
+            "playlist_name": playlist["playlist_name"],
+            **stats
+        }
+
+        combined_tracks.extend(tracks)
+
+    if not combined_tracks:
+        return {"status": "empty"}
+
+    combined_stats = compute_genre_metrics(combined_tracks)
+
+    return {
+        "status": "ready",
+        "data": {
+            "combined": combined_stats,
+            "playlists": per_playlist
+        }
+    }
