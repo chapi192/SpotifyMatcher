@@ -48,12 +48,8 @@ export async function renderAvgLength(data, currentSelection) {
                     ${
                         currentSelection === "combined"
                             ? `
-                                <span class="ws-selection-name">
-                                    All Selected
-                                </span>
-                                <span class="ws-selection-meta">
-                                    ${data.track_count} tracks • ${data.playlist_count || "Multiple"} playlists
-                                </span>
+                                <span class="ws-selection-name">All Selected</span>
+                                <span class="ws-selection-meta">${data.track_count} tracks</span>
                             `
                             : `
                             <a 
@@ -63,9 +59,7 @@ export async function renderAvgLength(data, currentSelection) {
                             >
                                 ${escapeHtml(data.playlist_name || "")}
                             </a>
-                                <span class="ws-selection-meta">
-                                    ${data.track_count} tracks
-                                </span>
+                                <span class="ws-selection-meta">${data.track_count} tracks</span>
                             `
                     }
                 </div>

@@ -35,9 +35,7 @@ export function renderArtistFrequency(data, currentSelection) {
                         currentSelection === "combined"
                             ? `
                                 <span class="ws-selection-name">All Selected</span>
-                                <span class="ws-selection-meta">
-                                    ${data.track_count} tracks • ${data.unique_artists} artists
-                                </span>
+                                <span class="ws-selection-meta">${data.track_count} tracks • ${data.unique_artists} artists</span>
                               `
                             : `
                                 <a
@@ -47,9 +45,7 @@ export function renderArtistFrequency(data, currentSelection) {
                                 >
                                     ${escapeHtml(data.playlist_name || "")}
                                 </a>
-                                <span class="ws-selection-meta">
-                                    ${data.track_count} tracks • ${data.unique_artists} artists
-                                </span>
+                                <span class="ws-selection-meta">${data.track_count} tracks • ${data.unique_artists} artists</span>
                               `
                     }
                 </div>

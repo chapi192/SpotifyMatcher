@@ -575,6 +575,9 @@
 .ws-artist-selection-left {
     flex: 1;
     min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
 }
 
 /* swap button */
@@ -843,14 +846,186 @@
 }
 
 /* =========================================
-   GENRE ACTIVE ICON
+   genres ACTIVE ICON
 ========================================= */
 
-.ws-genre-active-icon {
+.ws-genres-active-icon {
     width: 56px;
     height: 56px;
     border-radius: 50%;
     flex-shrink: 0;
     background: var(--accent-green);
     box-shadow: 0 0 12px rgba(0,0,0,0.35);
+}
+
+/* =========================================
+   genresS (CLONED FROM ARTIST SYSTEM)
+========================================= */
+
+.ws-genres-layout {
+    display: grid;
+    grid-template-columns: 340px minmax(0, 1fr);
+    gap: 60px;
+    align-items: start;
+}
+
+.ws-genres-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.ws-genres-card {
+    padding: 16px 20px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ws-genres-label {
+    font-size: 12px;
+    opacity: 0.6;
+    letter-spacing: 0.4px;
+}
+
+.ws-genres-value {
+    font-size: 14px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    display: flex;
+    align-items: center;
+    line-height: 1;
+    gap: 6px;
+    min-width: 0;
+}
+
+/* genres LINKS — NO UNDERLINE */
+
+.ws-genres-value a {
+    flex: 1;
+    line-height: 1;
+    color: var(--accent-green);
+    text-decoration: none;
+
+    display: inline-block;
+    max-width: 100%;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ws-genres-value a:hover {
+    text-decoration: none;   /* explicitly disabled */
+}
+
+.ws-genres-header-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    margin-top: -5px;
+}
+
+.ws-genres-selection-left {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+
+/* swap button reused */
+
+.ws-genres-layout .ws-swap-btn {
+    margin-left: auto;
+}
+
+/* chart container */
+
+.ws-genres-chart {
+    position: relative;
+    height: 420px;
+
+    transform-origin: top center;
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.ws-genres-chart canvas {
+    position: relative;
+    z-index: 1;
+}
+
+.ws-genres-chart.ws-shrinking {
+    opacity: 0;
+    transform: scale(0.965);
+}
+
+/* active genres block (mirrors artist) */
+
+.ws-genres-right {
+    display: flex;
+    flex-direction: column;
+}
+
+.ws-genres-active {
+    margin-top: 0;
+    transition: opacity 180ms ease;
+}
+
+.ws-genres-active.ws-fading {
+    opacity: 0;
+}
+
+.ws-genres-active-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.ws-genres-active-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--accent-green);
+    box-shadow: 0 0 12px rgba(0,0,0,0.35);
+}
+
+.ws-genres-active-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ws-genres-active-name {
+    font-size: 20px;
+    font-weight: 750;
+    letter-spacing: 0.6px;
+
+    text-decoration: none;
+}
+
+.ws-genres-active-meta {
+    font-size: 13px;
+    opacity: 0.7;
+    letter-spacing: 0.3px;
+}
+
+.ws-genre-active-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.ws-genres-active-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
 }

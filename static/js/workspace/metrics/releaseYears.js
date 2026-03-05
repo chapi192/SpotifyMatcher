@@ -200,9 +200,7 @@ export function renderReleaseYears(data, currentSelection) {
                             <span class="ws-selection-name">
                                 All Selected
                             </span>
-                            <span class="ws-selection-meta">
-                                ${data.track_count} tracks
-                            </span>
+                            <span class="ws-selection-meta">${data.track_count} tracks</span>
                         `
                         : `
                             <a 
@@ -212,9 +210,7 @@ export function renderReleaseYears(data, currentSelection) {
                             >
                                 ${data.playlist_name || ""}
                             </a>
-                            <span class="ws-selection-meta">
-                                ${data.track_count} tracks
-                            </span>
+                            <span class="ws-selection-meta">${data.track_count} tracks</span>
                         `
                 }
             </div>
@@ -358,9 +354,7 @@ function updateReleaseYearsView(data, currentSelection) {
                     <span class="ws-selection-name">
                         All Selected
                     </span>
-                    <span class="ws-selection-meta">
-                        ${data.track_count} tracks
-                    </span>
+                    <span class="ws-selection-meta">${data.track_count} tracks</span>
                 `
                 : `
                     <a 
@@ -370,9 +364,7 @@ function updateReleaseYearsView(data, currentSelection) {
                     >
                         ${data.playlist_name || ""}
                     </a>
-                    <span class="ws-selection-meta">
-                        ${data.track_count} tracks
-                    </span>
+                    <span class="ws-selection-meta">${data.track_count} tracks</span>
                 `;
     }
 

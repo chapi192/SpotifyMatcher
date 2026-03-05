@@ -1,0 +1,116 @@
+.rec-page {
+    padding: 20px 0;
+}
+
+.rec-title {
+    font-size: 28px;
+    margin-bottom: 20px;
+}
+
+.rec-layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 30px;
+}
+
+
+/* LEFT PANEL */
+
+.rec-track-panel {
+    border: 1px solid #1f2937;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.rec-track-header {
+    padding: 12px 16px;
+    font-weight: bold;
+    border-bottom: 1px solid #1f2937;
+}
+
+.rec-track-scroll {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.rec-track-item {
+    padding: 10px 16px;
+    cursor: pointer;
+}
+
+.rec-track-item:hover {
+    background: rgba(255,255,255,0.05);
+}
+
+.rec-track-item.active {
+    background: rgba(34,197,94,0.2);
+}
+
+
+/* RIGHT PANEL */
+
+.rec-analysis-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.rec-weights {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.rec-weight {
+    display: flex;
+    flex-direction: column;
+}
+
+.rec-weight select {
+    margin-top: 4px;
+}
+
+
+/* ANALYSIS */
+
+.rec-analysis {
+    border: 1px solid #1f2937;
+    border-radius: 10px;
+    padding: 20px;
+    min-height: 250px;
+}
+
+.rec-card {
+    border-top: 1px solid #1f2937;
+    padding: 12px 0;
+}
+
+.rec-card:first-child {
+    border-top: none;
+}
+
+.rec-card-title {
+    font-weight: bold;
+}
+
+.rec-score {
+    font-size: 13px;
+    opacity: .7;
+}
+
+.rec-reasons {
+    font-size: 13px;
+    opacity: .6;
+}
+
+.rec-none {
+    opacity: .6;
+}
+
+
+/* NAVIGATION */
+
+.rec-nav {
+    display: flex;
+    justify-content: space-between;
+}

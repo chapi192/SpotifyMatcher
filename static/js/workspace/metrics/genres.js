@@ -31,30 +31,26 @@ export function renderGenres(data, currentSelection) {
     }
 
     out.innerHTML = `
-    <div class="ws-artist-full">
+    <div class="ws-genres-full">
         <div class="ws-avg-header">
             <div class="ws-avg-title">
                 Genre Diversity:
                 <span class="ws-avg-inline-number">${data.diversity_score}</span>
             </div>
 
-            <div class="ws-artist-header-row">
-                <div class="ws-artist-selection-left">
+            <div class="ws-genres-header-row">
+                <div class="ws-genres-selection-left">
                     ${
                         currentSelection === "combined"
                             ? `
                                 <span class="ws-selection-name">All Selected</span>
-                                <span class="ws-selection-meta">
-                                    ${data.track_count} tracks • ${data.unique_genres} genres
-                                </span>
+                                <span class="ws-selection-meta">${data.track_count} tracks • ${data.unique_genres} genres</span>
                               `
                             : `
                                 <span class="ws-selection-name">
                                     ${escapeHtml(data.playlist_name || "")}
                                 </span>
-                                <span class="ws-selection-meta">
-                                    ${data.track_count} tracks • ${data.unique_genres} genres
-                                </span>
+                                <span class="ws-selection-meta">${data.track_count} tracks • ${data.unique_genres} genres</span>
                               `
                     }
                 </div>
@@ -65,40 +61,40 @@ export function renderGenres(data, currentSelection) {
             </div>
         </div>
 
-        <div class="ws-artist-layout">
-            <div class="ws-artist-panel">
+        <div class="ws-genres-layout">
+            <div class="ws-genres-panel">
 
-                <div class="ws-artist-card">
-                    <div class="ws-artist-label">Concentration</div>
-                    <div class="ws-artist-value">${data.concentration}</div>
+                <div class="ws-genres-card">
+                    <div class="ws-genres-label">Concentration</div>
+                    <div class="ws-genres-value">${data.concentration}</div>
                 </div>
 
-                <div class="ws-artist-card">
-                    <div class="ws-artist-label">Top Genre</div>
-                    <div class="ws-artist-value">
+                <div class="ws-genres-card">
+                    <div class="ws-genres-label">Top Genre</div>
+                    <div class="ws-genres-value">
                         ${escapeHtml(data.top_genre)}
                         <span>(${data.top_genre_pct}%)</span>
                     </div>
                 </div>
 
-                <div class="ws-artist-card">
-                    <div class="ws-artist-label">Dominance Gap</div>
-                    <div class="ws-artist-value">${data.dominance_gap}%</div>
+                <div class="ws-genres-card">
+                    <div class="ws-genres-label">Dominance Gap</div>
+                    <div class="ws-genres-value">${data.dominance_gap}%</div>
                 </div>
 
-                <div class="ws-artist-card">
-                    <div class="ws-artist-label">Avg Tracks / Genre</div>
-                    <div class="ws-artist-value">${data.avg_tracks_per_genre}</div>
+                <div class="ws-genres-card">
+                    <div class="ws-genres-label">Avg Tracks / Genre</div>
+                    <div class="ws-genres-value">${data.avg_tracks_per_genre}</div>
                 </div>
 
-                <div class="ws-artist-card">
-                    <div class="ws-artist-label">Multi-Genre Tracks</div>
-                    <div class="ws-artist-value">${data.multi_genre_track_pct}%</div>
+                <div class="ws-genres-card">
+                    <div class="ws-genres-label">Multi-Genre Tracks</div>
+                    <div class="ws-genres-value">${data.multi_genre_track_pct}%</div>
                 </div>
 
-                <div class="ws-artist-card">
-                    <div class="ws-artist-label">Most Genre-Dense Track</div>
-                    <div class="ws-artist-value">
+                <div class="ws-genres-card">
+                    <div class="ws-genres-label">Most Genre-Dense Track</div>
+                    <div class="ws-genres-value">
                         <a href="https://open.spotify.com/track/${data.max_genre_track_id}" target="_blank">
                             ${truncateText(escapeHtml(data.max_genre_track_name || ""), 30)}
                         </a>
@@ -108,18 +104,18 @@ export function renderGenres(data, currentSelection) {
 
             </div>
 
-            <div class="ws-artist-right">
-                <div class="ws-artist-chart">
+            <div class="ws-genres-right">
+                <div class="ws-genres-chart">
                     <canvas id="wsChart"></canvas>
                 </div>
 
-                <div class="ws-artist-active ws-artist-card">
-                    <div class="ws-artist-active-row">
+                <div class="ws-genres-active ws-genres-card">
+                    <div class="ws-genres-active-row">
                         <div class="ws-genre-active-icon"></div>
 
-                        <div class="ws-artist-active-info">
-                            <div class="ws-artist-active-name"></div>
-                            <div class="ws-artist-active-meta"></div>
+                        <div class="ws-genres-active-info">
+                            <div class="ws-genres-active-name"></div>
+                            <div class="ws-genres-active-meta"></div>
                         </div>
                     </div>
                 </div>
@@ -151,8 +147,8 @@ function renderGenreChart(data) {
     const ctx = canvas.getContext("2d");
 
     const activeIcon = document.querySelector(".ws-genre-active-icon");
-    const activeName = document.querySelector(".ws-artist-active-name");
-    const activeMeta = document.querySelector(".ws-artist-active-meta");
+    const activeName = document.querySelector(".ws-genres-active-name");
+    const activeMeta = document.querySelector(".ws-genres-active-meta");
 
     const treeData = data.top_10.map(g => ({
         label: g.genre,
@@ -176,7 +172,7 @@ function renderGenreChart(data) {
         activeMeta.textContent =
             `Appears on ${item.value} tracks • ${percent}% of playlist`;
 
-        activeName.style.setProperty("--artistColor", color);
+        activeName.style.setProperty("--genresColor", color);
     }
 
     // =========================
@@ -260,6 +256,10 @@ function renderGenreChart(data) {
                 spacing: 3,
                 borderWidth: 2,
                 borderColor: "rgba(0,0,0,0.35)",
+
+                hoverBorderWidth: 2,
+                hoverBorderColor: "#1DB954",
+
                 backgroundColor(context) {
 
                     const raw = context?.raw;
@@ -297,9 +297,8 @@ function renderGenreChart(data) {
                     raw?.label;
 
                 if (!label) return;
-                if (!raw?.label) return;
 
-                const item = treeData.find(t => t.label === raw.label);
+                const item = treeData.find(t => t.label === label);
                 if (!item) return;
 
                 setActiveGenre(item);

@@ -6,6 +6,10 @@ from web.routes.library import get_active_dataset_and_profiles
 import math
 import statistics
 from collections import Counter
+from web.routes.recommendations import (
+    recommendation_breakdown,
+    recommendation_profiles
+)
 
 router = APIRouter()
 
