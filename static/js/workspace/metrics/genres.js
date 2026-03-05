@@ -64,7 +64,25 @@ export function renderGenres(data, currentSelection) {
         <div class="ws-genres-layout">
             <div class="ws-genres-panel">
 
-                <div class="ws-genres-card">
+                <div class="ws-genres-card ws-release-dominant">
+
+                        <span 
+                            class="ws-panel-help ws-help"
+                            data-tooltip="Conentration - How concentrated the selection is around its most frequent genres.
+
+                            Top Genre - The most common genre and its percentage of the selection.
+
+                            Dominance Gap - Percentage point difference between the top genre(s) and the next most common genre.
+
+                            Avg Tracks / Genre - The average number of tracks that share a genre tag.
+
+                            Multi-Genre Tracks - Percentage of tracks that are tagged with more than one genre.
+
+                            Most Genre-Dense Track - The track with the most genre tags, and how many it has.
+                            ">
+                        ?
+                        </span>
+
                     <div class="ws-genres-label">Concentration</div>
                     <div class="ws-genres-value">${data.concentration}</div>
                 </div>
@@ -170,7 +188,7 @@ function renderGenreChart(data) {
             : 0;
 
         activeMeta.textContent =
-            `Appears on ${item.value} tracks • ${percent}% of playlist`;
+            `Appears on ${item.value} tracks • ${percent}% of selection`;
 
         activeName.style.setProperty("--genresColor", color);
     }

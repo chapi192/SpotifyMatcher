@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request, Body
 import time
-
+from web.utils.debug import build_debug
 from web.spotify_auth import get_spotify_client, build_oauth
 from web.state import PLAYLIST_CACHE, PLAYLIST_DATA_CACHE, BUILD_STATE, USER_BUILD_STATE
 from web.routes.build import start_incremental_build
@@ -68,6 +68,45 @@ def update_selection(request: Request, data: dict = Body(...)):
     breakdown_source = data.get("breakdown_source")
     hidden_ids = data.get("hidden_ids", [])
 
+    from web.spotify_auth import get_user_id
+    user_id = get_user_id(request)
+
+    build_debug(f"User updated selection → {selected_ids}")
+
+    existing_state = USER_BUILD_STATE.get(user_id)
+
+    if existing_state:
+
+        tracked = set(existing_state.get("playlist_track_map", {}).keys())
+        removed = tracked - set(selected_ids)
+
+        if removed:
+            build_debug(f"Playlists removed from build → {removed}")
+
+        for pid in removed:
+
+            removed_tracks = existing_state["playlist_track_map"].get(pid, 0)
+
+            existing_state["total_tracks"] -= removed_tracks
+
+            if pid in PLAYLIST_DATA_CACHE.get(user_id, {}):
+                existing_state["tracks_processed"] -= removed_tracks
+
+            existing_state["tracks_processed"] = max(existing_state["tracks_processed"], 0)
+            existing_state["total_tracks"] = max(existing_state["total_tracks"], 0)
+
+            existing_state["playlist_track_map"].pop(pid, None)
+
+        if existing_state and not existing_state["playlist_track_map"]:
+            build_debug("All playlists removed — cancelling build")
+
+            # bump version so worker/progress callbacks stop immediately
+            existing_state["version"] = existing_state.get("version", 0) + 1
+
+            existing_state["status"] = "cancelled"
+            existing_state["tracks_processed"] = 0
+            existing_state["total_tracks"] = 0
+
     if breakdown_source and breakdown_source not in selected_ids:
         breakdown_source = None
 
@@ -77,56 +116,107 @@ def update_selection(request: Request, data: dict = Body(...)):
 
     sp = get_spotify_client(request)
     if sp:
-        from web.spotify_auth import get_user_id
-        user_id = get_user_id(request)
+
         user_cache = PLAYLIST_DATA_CACHE.get(user_id, {})
 
-        missing = [pid for pid in selected_ids if pid not in user_cache]
+        existing_state = USER_BUILD_STATE.get(user_id)
+
+        tracked = set()
+        if existing_state:
+            tracked = set(existing_state.get("playlist_track_map", {}).keys())
+
+        missing = [
+            pid for pid in selected_ids
+            if pid not in user_cache and pid not in tracked
+        ]
+
+        build_debug(f"Playlists missing from cache → {missing}")
 
         if missing:
-
-            # Compute total tracks for missing playlists
-            total_tracks = 0
 
             playlist_cache = PLAYLIST_CACHE.get(user_id, {})
             cached_playlists = playlist_cache.get("data", [])
 
-            # Build quick lookup map
             track_lookup = {p["id"]: p["track_count"] for p in cached_playlists}
-
-            for pid in missing:
-                if pid in track_lookup:
-                    total_tracks += track_lookup[pid]
-                else:
-                    # Fallback safety (should rarely happen)
-                    if pid == "__liked__":
-                        meta = sp.current_user_saved_tracks(limit=1)
-                        total_tracks += meta["total"]
-                    else:
-                        pl = sp.playlist(pid, fields="tracks.total")
-                        total_tracks += pl["tracks"]["total"]
+            name_lookup = {p["id"]: p["name"] for p in cached_playlists}
 
             BUILD_STATE.setdefault(user_id, {"version": 0})
             BUILD_STATE[user_id]["version"] += 1
             version = BUILD_STATE[user_id]["version"]
 
-            if BUILD_STATE.get(user_id, {}).get("version") != version:
-                return
+            existing_state = USER_BUILD_STATE.get(user_id)
 
-            # Initialize progress state
-            USER_BUILD_STATE[user_id] = {
-                "version": version,
-                "status": "building",
-                "total_tracks": total_tracks,
-                "tracks_processed": 0
-            }
+            if existing_state and existing_state["status"] == "building":
 
-            start_incremental_build(
-                request,
-                user_id=user_id,
-                version=version,
-                playlist_ids=missing
-            )
+                build_debug("Extending current build")
+
+                for pid in missing:
+
+                    if pid in existing_state["playlist_track_map"]:
+                        continue
+
+                    tracks = track_lookup.get(pid)
+
+                    if tracks is None or tracks == 0:
+
+                            if pid == "__liked__":
+                                meta = sp.current_user_saved_tracks(limit=1)
+                                tracks = meta["total"]
+                            else:
+                                pl = sp.playlist(pid, fields="name,tracks.total")
+                                tracks = pl["tracks"]["total"]
+
+                            track_lookup[pid] = tracks
+
+                    existing_state["playlist_track_map"][pid] = tracks
+                    existing_state["total_tracks"] += tracks
+
+                    build_debug(f"Added playlist to build → {name_lookup.get(pid,pid)} ({tracks} tracks)")
+
+            else:
+
+                total_tracks = 0
+
+                for pid in missing:
+
+                    tracks = track_lookup.get(pid)
+
+                    if tracks is None or tracks == 0:
+
+                        if pid == "__liked__":
+                            meta = sp.current_user_saved_tracks(limit=1)
+                            tracks = meta["total"]
+                        else:
+                            pl = sp.playlist(pid, fields="name,tracks.total")
+                            tracks = pl["tracks"]["total"]
+
+                        track_lookup[pid] = tracks
+
+                    total_tracks += tracks
+
+                    build_debug(f"Track count resolved → {name_lookup.get(pid,pid)} : {tracks}")
+
+                USER_BUILD_STATE[user_id] = {
+                    "version": version,
+                    "status": "building",
+                    "total_tracks": total_tracks,
+                    "tracks_processed": 0,
+                    "playlist_track_map": {
+                        pid: track_lookup.get(pid, 0) for pid in missing
+                    }
+                }
+
+                existing_state = USER_BUILD_STATE[user_id]
+
+                build_debug(f"Starting new build v{version} → {missing}")
+
+            if not existing_state or existing_state["version"] == version:
+
+                start_incremental_build(
+                    request,
+                    user_id=user_id,
+                    version=version,
+                )
 
     return {
         "status": "ok",

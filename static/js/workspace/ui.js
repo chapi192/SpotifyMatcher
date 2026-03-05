@@ -15,14 +15,12 @@ export function renderPlaylistSections(data) {
             <div class="playlist-card no-animate ws-card-clickable ${
                 currentSelection === "combined" ? "ws-active" : ""
             }"
-                onclick="selectWorkspacePlaylist('combined', this)">
-                <div class="playlist-row-content">
-                    ${coverHtml(null)}
-                    <div class="playlist-info">
-                        <div class="playlist-name">All Selected</div>
-                        <div class="playlist-count">
-                            ${data.total_tracks} tracks • ${data.playlist_count} playlists
-                        </div>
+            onclick="selectWorkspacePlaylist('combined', this)">
+                ${coverHtml(null)}
+                <div class="playlist-info">
+                    <div class="playlist-name">All Selected</div>
+                    <div class="playlist-count">
+                        ${data.total_tracks} tracks • ${data.playlist_count} playlists
                     </div>
                 </div>
             </div>
@@ -34,13 +32,11 @@ export function renderPlaylistSections(data) {
             <div class="playlist-card no-animate ws-card-clickable ${
                 currentSelection === p.playlist_id ? "ws-active" : ""
             }"
-                onclick="selectWorkspacePlaylist('${p.playlist_id}', this)">
-                <div class="playlist-row-content">
-                    ${coverHtml(p.image)}
-                    <div class="playlist-info">
-                        <div class="playlist-name">${escapeHtml(p.playlist_name)}</div>
-                        <div class="playlist-count">${p.track_count} tracks</div>
-                    </div>
+            onclick="selectWorkspacePlaylist('${p.playlist_id}', this)">
+                ${coverHtml(p.image)}
+                <div class="playlist-info">
+                    <div class="playlist-name">${escapeHtml(p.playlist_name)}</div>
+                    <div class="playlist-count">${p.track_count} tracks</div>
                 </div>
             </div>
         `);

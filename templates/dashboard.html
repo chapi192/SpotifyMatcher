@@ -4,9 +4,15 @@
 
 <div class="dashboard-header">
     <h2>Your Playlists</h2>
-    <button class="btn secondary" onclick="deselectAll()">
-        Deselect All
-    </button>
+        <div class="dashboard-actions">
+            <!-- <button class="btn" onclick="selectAll()">
+                Select All
+            </button> -->
+
+            <button class="btn" onclick="deselectAll()">
+                Deselect All
+            </button>
+        </div>
 </div>
 
 <hr style="margin:10px 0; opacity:0.2;">
@@ -25,7 +31,6 @@ let selectionTimeout = null;
 let hiddenSet = new Set();
 let allPlaylists = [];
 let selectedSet = new Set();
-let breakdownId = null;
 
 async function loadPlaylists() {
     const cached = sessionStorage.getItem("cachedPlaylists");
@@ -43,7 +48,6 @@ async function loadPlaylists() {
     const selectionData = await selectionRes.json();
 
     selectedSet = new Set(selectionData.selected_ids || []);
-    breakdownId = selectionData.breakdown_source || null;
     hiddenSet = new Set(selectionData.hidden_ids || []);
 
     allPlaylists = playlistData.playlists;
@@ -95,7 +99,6 @@ function renderPlaylists() {
         }
 
         if (!isHidden && selectedSet.has(p.id)) card.classList.add("selected");
-        if (!isHidden && breakdownId === p.id) card.classList.add("breakdown");
         if (isHidden) card.classList.add("hidden-card");
 
         card.innerHTML = `
@@ -111,25 +114,16 @@ function renderPlaylists() {
                 </div>
                 <div class="playlist-info">
                     <div class="playlist-name">${p.name}</div>
-                    <div class="playlist-count">${p.track_count} songs</div>
+
+                    <div class="playlist-meta-row">
+                        <div class="playlist-count">${p.track_count} songs</div>
+                        <button class="hide-bottom-btn">${isHidden ? "UNHIDE" : "HIDE"}</button>
+                    </div>
                 </div>
-            </div>
-            <div class="playlist-card-buttons">
-                <button class="breakdown-btn">BREAKDOWN</button>
-                <button class="hide-bottom-btn">${isHidden ? "UNHIDE" : "HIDE"}</button>
-            </div>
-        `;
+                </div>
+            `;
 
         const hideBtn = card.querySelector(".hide-bottom-btn");
-        const breakdownBtn = card.querySelector(".breakdown-btn");
-
-        breakdownBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            if (breakdownId === p.id) breakdownId = null;
-            else { breakdownId = p.id; selectedSet.add(p.id); }
-            renderPlaylists();
-            scheduleSelectionUpdate();
-        });
 
         hideBtn.addEventListener("click", (e) => {
             e.stopPropagation();
@@ -137,7 +131,6 @@ function renderPlaylists() {
             else {
                 hiddenSet.add(p.id);
                 selectedSet.delete(p.id);
-                if (breakdownId === p.id) breakdownId = null;
             }
             renderPlaylists();
             scheduleSelectionUpdate();
@@ -150,7 +143,6 @@ function renderPlaylists() {
 
                 if (wasSelected) {
                     selectedSet.delete(p.id);
-                    if (breakdownId === p.id) breakdownId = null;
 
                     // Set cooldown window for this card
                     cooldownUntilById[p.id] = Date.now() + 800;
@@ -184,7 +176,26 @@ function renderPlaylists() {
 
 function deselectAll() {
     selectedSet.clear();
-    breakdownId = null;
+    renderPlaylists();
+    scheduleSelectionUpdate();
+}
+
+function selectAll() {
+
+    const confirmed = confirm(
+        "Select all playlists?\n\nLarge libraries will take a while."
+    );
+
+    if (!confirmed) return;
+
+    selectedSet.clear();
+
+    allPlaylists.forEach(p => {
+        if (!hiddenSet.has(p.id)) {
+            selectedSet.add(p.id);
+        }
+    });
+
     renderPlaylists();
     scheduleSelectionUpdate();
 }
@@ -207,7 +218,6 @@ async function sendSelectionUpdate() {
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
             selected_ids: Array.from(selectedSet),
-            breakdown_source: breakdownId,
             hidden_ids: Array.from(hiddenSet)
         })
     });

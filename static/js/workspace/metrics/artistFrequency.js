@@ -59,6 +59,22 @@ export function renderArtistFrequency(data, currentSelection) {
         <div class="ws-artist-layout">
             <div class="ws-artist-panel">
                 <div class="ws-artist-card">
+                    <span 
+                            class="ws-panel-help ws-help"
+                            data-tooltip="Artist Concentration - How much the selection is dominated by a few artists. More diverse = lower concentration.
+
+                            Top Artist - The artist that appears on the most tracks in the selection.
+
+                            Unique Appearances - Percentage of artists that only appear on one track. 
+
+                            Avg Tracks / Artist - Average number of tracks each artist appears on.
+
+                            Multi-Artist Tracks - Percentage of tracks that feature more than one artist.
+
+                            Max Artists On Track - The track with the most artists.
+                    "
+                        >?</span>
+
                     <div class="ws-artist-label">Concentration</div>
                     <div class="ws-artist-value">${data.concentration}</div>
                 </div>
@@ -163,7 +179,7 @@ function renderArtistChart(data) {
             : 0;
 
         activeMeta.textContent =
-            `Appears on ${trackCount} tracks • ${percent}% of playlist`;
+            `Appears on ${trackCount} tracks • ${percent}% of selection`;
 
         const finalColor = ensureReadableColor(color || "#000000");
         activeName.style.setProperty("--artistColor", finalColor);

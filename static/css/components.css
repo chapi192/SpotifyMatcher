@@ -2,11 +2,28 @@
    UNIVERSAL BUTTON SYSTEM
 ========================================= */
 
-.btn,
-.playlist-card-buttons button {
+.btn {
     font-size: 11px;
     letter-spacing: 1px;
     padding: 6px 12px;
+
+    background: transparent;
+    border: 1px solid var(--accent-green-soft);
+    color: var(--accent-green);
+
+    cursor: pointer;
+
+    transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease;
+}
+
+.hide-bottom-btn {
+    font-size: 9px;
+    letter-spacing: 1px;
+    padding: 3px 8px;
 
     background: transparent;
     border: 1px solid;
@@ -21,11 +38,17 @@
 }
 
 .btn:hover,
-.playlist-card-buttons button:hover {
+.hide-bottom-btn:hover {
     transform: translateY(-2px);
 }
 
-/* Green */
+.dashboard-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* Green buttons */
+
 .btn,
 .hide-bottom-btn {
     border-color: var(--accent-green-soft);
@@ -38,68 +61,50 @@
     box-shadow: 0 0 8px rgba(29,185,84,0.6);
 }
 
-/* Gold */
-.breakdown-btn {
-    border-color: var(--accent-gold-soft);
-    color: var(--accent-gold);
-}
-
-.breakdown-btn:hover {
-    border-color: var(--accent-gold);
-    box-shadow: 0 0 8px rgba(245,158,11,0.6);
-}
 
 /* =========================================
-   CARD BUTTON ROW
+   PLAYLIST META ROW
 ========================================= */
 
-.playlist-card-buttons {
+.playlist-meta-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
+
+    width: 170px;
     margin-top: 4px;
 }
 
-.breakdown-btn {
-    width: 100px;
-    text-align: center;
-}
-
-/* tighten legacy overrides */
-.playlist-card-buttons button {
-    font-size: 10px;
-    letter-spacing: 1px;
-    padding: 4px 10px;
-}
 
 /* =========================================
-   PLAYLIST CARD — FILLED VERSION
+   PLAYLIST CARD
 ========================================= */
 
 .playlist-card {
     position: relative;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
 
     padding: 2px 2px;
-    min-height: auto;
     gap: 2px;
 
     background: var(--bg-card);
     backdrop-filter: blur(4px);
+
+    width: 180px;
 }
 
 .playlist-row-content {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 14px;
+    gap: 10px;
 }
 
 .playlist-cover {
-    width: 100px;
-    height: 100px;
-    flex-shrink: 0;
+    width: 170px;
+    height: 170px;
+    margin-top: 4px;
     overflow: hidden;
 }
 
@@ -112,25 +117,19 @@
 .playlist-info {
     display: flex;
     flex-direction: column;
-    justify-content: center;
 
-    line-height: 1.2;
-    flex: 1;
-
-    padding-right: 12px;
+    width: 170px;
     min-width: 0;
 }
 
 .playlist-name {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 600;
-    line-height: 1.15;
     color: #e5e7eb;
 
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    width: 170px;
 
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
@@ -139,11 +138,11 @@
     font-size: 13px;
     font-weight: 500;
     color: var(--accent-green);
-    margin-top: 4px;
 }
 
+
 /* =========================================
-   TRACE SYSTEM
+   TRACE BORDER SYSTEM
 ========================================= */
 
 .playlist-card::before {
@@ -195,48 +194,4 @@
         2px 100%,
         100% 2px,
         2px 100%;
-}
-
-/* Gold overlay for breakdown selected */
-.playlist-card.breakdown.selected::after {
-    content: "";
-    position: absolute;
-    inset: -3px;
-    pointer-events: none;
-
-    background-image:
-        linear-gradient(var(--accent-gold), var(--accent-gold)),
-        linear-gradient(var(--accent-gold), var(--accent-gold)),
-        linear-gradient(var(--accent-gold), var(--accent-gold)),
-        linear-gradient(var(--accent-gold), var(--accent-gold));
-
-    background-repeat: no-repeat;
-    background-position:
-        top left,
-        top right,
-        bottom right,
-        bottom left;
-
-    background-size:
-        100% 2px,
-        2px 100%,
-        100% 2px,
-        2px 100%;
-
-    opacity: 1;
-    transition: opacity 0.35s ease;
-}
-
-/* =========================================
-   SURFACE UTILITIES
-========================================= */
-
-.surface-soft {
-    background: var(--surface-bg-soft);
-    border: 1px solid var(--surface-border);
-}
-
-.surface-strong {
-    background: var(--surface-bg-strong);
-    border: 1px solid var(--surface-border);
 }

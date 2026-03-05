@@ -32,19 +32,34 @@ function handleMouseOut(e) {
 function handleMouseMove(e) {
     if (!tooltipEl.classList.contains("visible")) return;
 
-    const padding = 14;
+    const padding = 16;
 
     const rect = tooltipEl.getBoundingClientRect();
 
-    let x = e.clientX - rect.width - padding; // ← LEFT of cursor
+    const help = document.querySelector(".ws-help:hover");
+
+    let x;
+
+    // Special case override
+    if (help?.dataset.tooltipSide === "left") {
+        x = e.clientX - rect.width - padding;
+    } else {
+        x = e.clientX + padding;
+    }
+
     let y = e.clientY + padding;
 
-    // If too far left, flip to right side
+    // Prevent overflow right
+    if (x + rect.width > window.innerWidth) {
+        x = e.clientX - rect.width - padding;
+    }
+
+    // Prevent overflow left
     if (x < 0) {
         x = e.clientX + padding;
     }
 
-    // If too far down, move upward
+    // Prevent overflow bottom
     if (y + rect.height > window.innerHeight) {
         y = e.clientY - rect.height - padding;
     }

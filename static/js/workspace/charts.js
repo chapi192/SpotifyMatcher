@@ -87,7 +87,7 @@ export function renderHistogram(durations) {
 
     const labels = sortedBuckets.map(start => {
         const end = start + bucketSize;
-        return `${formatTime(start)}–${formatTime(end)}`;
+        return `${formatTime(start)}-${formatTime(end)}`;
     });
 
     const values = sortedBuckets.map(k => buckets[k]);
@@ -179,8 +179,8 @@ export function renderPopularityHistogram(values) {
     });
 
     const labels = [
-        "0–9","10–19","20–29","30–39","40–49",
-        "50–59","60–69","70–79","80–89","90–100"
+        "0-9","10-19","20-29","30-39","40-49",
+        "50-59","60-69","70-79","80-89","90-100"
     ];
 
     const ctx = document.getElementById("wsChart").getContext("2d");

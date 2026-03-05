@@ -73,12 +73,16 @@ export async function renderAvgLength(data, currentSelection) {
 
                     <span 
                         class="ws-panel-help ws-help"
-                        data-tooltip=
-                        "Commitment – total listening time of selection.\n
-                    Flow Density – % of songs are near the average length.\n
-                    Consistency – variability in duration.\n
-                    Radio – % of tracks times within radio standards.
-                    ">
+                        data-tooltip="Commitment - The total time it would take to listen to all tracks in the selection.
+
+                        Flow Density - The percentage of tracks that are near the average length.
+
+                        Consistency - How similar track lengths are to the average length.
+
+                        Radio - Percentage of tracks in radio-friendly length (between 3 and 5 minutes).
+
+                    "
+                    >
                     ?
                     </span>
 

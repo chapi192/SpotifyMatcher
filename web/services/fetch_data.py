@@ -2,6 +2,19 @@ import time
 import spotipy
 import spotipy.exceptions
 
+def format_genre(g):
+    if not g:
+        return g
+
+    # title case words
+    g = " ".join(word.capitalize() for word in g.split())
+
+    # fix common acronyms
+    g = g.replace("R&b", "R&B")
+    g = g.replace("Edm", "EDM")
+    g = g.replace("Uk ", "UK ")
+
+    return g
 
 def safe_spotify_call(func, *args, **kwargs):
     while True:
@@ -15,7 +28,7 @@ def safe_spotify_call(func, *args, **kwargs):
                 raise
 
 
-def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None):
+def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None, cancel_check=None):
 
     if artist_cache is None:
         artist_cache = {}
@@ -43,6 +56,9 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None):
         )
 
         while True:
+
+            if cancel_check and cancel_check():
+                return None
 
             page_items = results["items"]
             fetched_this_page = len(page_items)
@@ -81,7 +97,7 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None):
                         image_url = images[0]["url"] if images else None
 
                         artist_cache[artist["id"]] = {
-                            "genres": artist.get("genres", []),
+                            "genres": [format_genre(g) for g in artist.get("genres", [])],
                             "image_url": image_url
                         }
 
@@ -128,6 +144,9 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None):
             if not results["next"]:
                 break
 
+            if cancel_check and cancel_check():
+                return None
+
             results = safe_spotify_call(sp.next, results)
 
     # =====================================================
@@ -157,6 +176,9 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None):
 
         while True:
 
+            if cancel_check and cancel_check():
+                return None
+            
             page_items = results["items"]
             fetched_this_page = len(page_items)
 
@@ -194,7 +216,7 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None):
                         image_url = images[0]["url"] if images else None
 
                         artist_cache[artist["id"]] = {
-                            "genres": artist.get("genres", []),
+                            "genres": [format_genre(g) for g in artist.get("genres", [])],
                             "image_url": image_url
                         }
 
@@ -240,6 +262,9 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None):
 
             if not results["next"]:
                 break
+
+            if cancel_check and cancel_check():
+                return None
 
             results = safe_spotify_call(sp.next, results)
 

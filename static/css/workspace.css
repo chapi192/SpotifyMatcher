@@ -75,76 +75,6 @@
 }
 
 /* =========================================
-   WORKSPACE — PLAYLIST LIST
-========================================= */
-
-#wsPlaylistSection {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    direction: rtl;
-    padding: 6px 10px 6px 14px;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255,255,255,0.20) transparent;
-}
-
-#wsPlaylistSection > * {
-    direction: ltr;
-}
-
-#wsPlaylistSection::-webkit-scrollbar { width: 8px; }
-#wsPlaylistSection::-webkit-scrollbar-track { background: transparent; }
-#wsPlaylistSection::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.16);
-    border-radius: 10px;
-}
-#wsPlaylistSection::-webkit-scrollbar-thumb:hover {
-    background: rgba(255,255,255,0.26);
-}
-
-/* list-mode playlist cards */
-
-.ws-sidebar .playlist-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 10px;
-}
-
-.ws-sidebar .playlist-card {
-    position: relative;
-    min-height: unset;
-    padding: 10px 10px;
-    gap: 8px;
-    background: rgba(255,255,255,0.015);
-    border: 1px solid rgba(255,255,255,0.06);
-}
-
-.ws-sidebar .playlist-row-content { gap: 10px; }
-.ws-sidebar .playlist-cover { width: 58px; height: 58px; }
-.ws-sidebar .playlist-name { font-size: 13px; }
-.ws-sidebar .playlist-count { font-size: 10px; }
-
-.ws-sidebar .playlist-card.ws-active {
-    border-color: rgba(29,185,84,0.65);
-    box-shadow: 0 0 10px rgba(29,185,84,0.25);
-}
-
-.ws-sidebar .playlist-card.ws-summary {
-    border-color: rgba(29,185,84,0.35);
-    background: rgba(29,185,84,0.05);
-}
-
-.ws-sidebar .playlist-card.ws-active:hover::before,
-.ws-sidebar .playlist-card.ws-active:hover::after {
-    animation: none !important;
-}
-
-.ws-sidebar .playlist-card.ws-active:hover {
-    border-color: rgba(29,185,84,0.65);
-    box-shadow: 0 0 10px rgba(29,185,84,0.25);
-}
-
-/* =========================================
    WORKSPACE — ANALYTICS PANEL (MAIN)
 ========================================= */
 
@@ -259,7 +189,6 @@
 }
 
 .ws-chart-overlay-wrap {
-    margin-top: 24px;
     min-height: 420px;
     padding: 28px 32px 48px 32px;
 
@@ -331,6 +260,17 @@
     font-size: 14px;
     color: #ffffff;
     flex-shrink: 0;
+}
+
+.ws-panel-help {
+    position: absolute;
+
+    top: 6px;
+    left: 0px;
+
+    margin: 0;
+
+    z-index: 5;
 }
 
 /* =========================================
@@ -763,9 +703,49 @@
 }
 
 .ws-release-controls {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
     align-items: center;
-    gap: 14px;
+}
+
+.ws-release-controls .ws-swap-btn:nth-child(1) { justify-self: start; }
+.ws-release-controls .ws-swap-btn:nth-child(2) { justify-self: center; }
+.ws-release-controls .ws-swap-btn:nth-child(3) { justify-self: end; }
+
+.ws-release-controls {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+}
+
+.ws-artist-card {
+    position: relative;
+}
+
+.ws-artist-card .ws-genres-card .ws-panel-help {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    left: auto;      /* important if an old rule set left */
+    margin: 0;       /* override .ws-help margin-left */
+    z-index: 5;
+}
+
+.ws-release-controls .ws-swap-btn {
+    margin-left: 0;
+}
+
+.ws-genres-card {
+    position: relative;
+}
+
+ .ws-panel-help {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    left: auto;
+    margin: 0;
+    z-index: 5;
 }
 
 /* =========================================
@@ -940,9 +920,13 @@
     gap: 10px;
 }
 
-/* swap button reused */
+.ws-genres-header-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
 
-.ws-genres-layout .ws-swap-btn {
+.ws-genres-header-row .ws-swap-btn {
     margin-left: auto;
 }
 
@@ -1028,4 +1012,243 @@
     display: flex;
     align-items: center;
     gap: 16px;
+}
+
+.ws-genres-full .ws-avg-header {
+    padding-right: 0;
+}
+
+.ws-artist-full .ws-avg-header {
+    padding-right: 0;
+}
+
+/* =========================================
+   WORKSPACE — PLAYLIST LIST
+========================================= */
+
+#wsPlaylistSection {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+
+
+    direction: rtl;
+
+    padding: 8px 10px;
+
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.20) transparent;
+
+    scrollbar-gutter: stable;          /* reserve scrollbar space so cards don’t get clipped */
+    padding-right: 6px;                /* tiny safety gap so borders never sit under the bar */
+    box-sizing: border-box;
+}
+
+#wsPlaylistSection > * {
+    direction: ltr;
+}
+
+/* scrollbar */
+
+#wsPlaylistSection::-webkit-scrollbar {
+    width: 8px;
+}
+
+#wsPlaylistSection::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#wsPlaylistSection::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.16);
+    border-radius: 10px;
+}
+
+#wsPlaylistSection::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.26);
+}
+
+/* playlist list container */
+
+.ws-sidebar .playlist-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* playlist card */
+
+.ws-sidebar .playlist-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+
+    width: 100%;
+    padding: 10px 12px;
+
+    background: rgba(255,255,255,0.015);
+    border: 1px solid rgba(255,255,255,0.06);
+
+    box-sizing: border-box;
+}
+
+.ws-sidebar .playlist-cover {
+    width: 58px;
+    height: 58px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* text area */
+
+.ws-sidebar .playlist-info {
+    flex: 1;
+    min-width: 0;
+}
+
+/* title */
+
+.ws-sidebar .playlist-name {
+    font-size: 13px;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* track count */
+
+.ws-sidebar .playlist-count {
+    font-size: 10px;
+}
+
+/* active card */
+
+.ws-sidebar .playlist-card.ws-active {
+    border-color: rgba(29,185,84,0.65);
+    box-shadow: 0 0 10px rgba(29,185,84,0.25);
+}
+
+.ws-sidebar .playlist-card.ws-summary {
+    border-color: rgba(29,185,84,0.35);
+    background: rgba(29,185,84,0.05);
+}
+
+/* prevent hover trace animation */
+
+.ws-sidebar .playlist-card.ws-active:hover::before,
+.ws-sidebar .playlist-card.ws-active:hover::after {
+    animation: none !important;
+}
+
+.ws-sidebar .playlist-card.ws-active:hover {
+    border-color: rgba(29,185,84,0.65);
+    box-shadow: 0 0 10px rgba(29,185,84,0.25);
+}
+
+.ws-sidebar .playlist-row-content {
+    display: grid;
+    grid-template-columns: 58px 1fr;
+    align-items: center;
+    column-gap: 12px;
+}
+
+#wsPlaylistSection > * {
+    direction: ltr;
+}
+
+.ws-sidebar .playlist-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+}
+
+/* =========================================
+   WORKSPACE SIDEBAR — PLAYLIST CARD (FINAL)
+   - no trace hover
+   - image left, text right
+========================================= */
+
+.ws-sidebar .playlist-card {
+    position: relative;              /* keep normal stacking */
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    padding: 10px 12px;
+    width: 100%;
+    box-sizing: border-box;
+
+    background: rgba(255,255,255,0.015);
+    border: 1px solid rgba(255,255,255,0.06);
+
+    /* make sure nothing is centering from base rules */
+    flex-direction: row;
+}
+
+.ws-sidebar .playlist-card::before,
+.ws-sidebar .playlist-card::after {
+    content: none !important;        /* kills the trace system from components.css */
+}
+
+.ws-sidebar .playlist-card:hover {
+    transform: none;                  /* in case anything else tries to lift */
+    border-color: rgba(29,185,84,0.30);
+    background: rgba(255,255,255,0.025);
+    box-shadow: none;
+}
+
+/* cover */
+.ws-sidebar .playlist-cover {
+    width: 58px;
+    height: 58px;
+    flex: 0 0 58px;
+    margin: 0;                        /* kill dashboard top margin */
+    overflow: hidden;
+}
+
+.ws-sidebar .playlist-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* text block */
+.ws-sidebar .playlist-info {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+}
+
+.ws-sidebar .playlist-name {
+    width: auto;                      /* overrides dashboard fixed 170px */
+    font-size: 13px;
+    line-height: 1.1;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ws-sidebar .playlist-count {
+    font-size: 10px;
+    line-height: 1;
+}
+
+/* active/summary states (keep your existing look, no trace) */
+.ws-sidebar .playlist-card.ws-active:hover,
+.ws-sidebar .playlist-card.ws-summary:hover {
+    transform: none;
+}
+
+#wsPlaylistSection .playlist-card {
+    box-sizing: border-box;
+    width: calc(100% - 10px);
 }

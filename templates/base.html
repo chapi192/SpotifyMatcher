@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="{{ url_for('static', path='css/components.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='css/dashboard.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='css/workspace.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', path='css/recommendations.css') }}">
+    <!-- <link rel="stylesheet" href="{{ url_for('static', path='css/recommendations.css') }}"> -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <title>Spotify Sorter</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -15,15 +15,18 @@
 <body class="{% block body_class %}{% endblock %}">
 
 <nav class="navbar">
-    <div class="brand"><strong>Spotify Sorter</strong></div>
+    <div class="brand">
+        <strong>Spotify Sorter</strong>
+        <span id="buildCounter" style="margin-left:12px;font-size:12px;opacity:0.7;"></span>
+    </div>
     <div id="globalProgressBar" class="global-progress"></div>
     <div class="nav-links">
         <a href="/">Home</a>
 
         {% if request.session.get("token_info") %}
-            <a href="/dashboard">Dashboard</a>
-            <a id="navWorkspace" class="nav-disabled" href="/workspace">Workspace</a>
-            <a id="navRecommendations" class="nav-disabled" href="/recommendations">Recommendations</a>
+            <a href="/dashboard">Playlists</a> <!-- Dashboard -->
+            <a id="navWorkspace" class="nav-disabled" href="/workspace">Analysis Workspace</a>
+            <!-- <a id="navRecommendations" class="nav-disabled" href="/recommendations">Recommendations</a> -->
             <a href="/logout" onclick="handleLogout()">Logout</a>
         {% else %}
             <a href="/login">Login</a>
@@ -57,12 +60,9 @@ function handleLogout() {
 
 async function refreshNavGating() {
     const workspace = document.getElementById("navWorkspace");
-    const recs = document.getElementById("navRecommendations");
-    if (!workspace || !recs) return;
+    if (!workspace) return;
 
-    // default safe state
     workspace.classList.add("nav-disabled");
-    recs.classList.add("nav-disabled");
 
     try {
         const res = await fetch("/api/nav-state");
@@ -70,17 +70,11 @@ async function refreshNavGating() {
 
         const isBuilding = (data.build_status === "building");
         const hasSelection = !!data.has_selection;
-        const hasBreakdown = !!data.breakdown_source;
 
-        // Workspace: not building AND has selection
         workspace.classList.toggle("nav-disabled", isBuilding || !hasSelection);
-
-        // Recommendations: not building AND has breakdown
-        recs.classList.toggle("nav-disabled", isBuilding || !hasBreakdown);
 
     } catch (e) {
         workspace.classList.add("nav-disabled");
-        recs.classList.add("nav-disabled");
     }
 }
 
@@ -155,7 +149,10 @@ async function pollBuildProgressLoop() {
             setTimeout(() => {
                 resetProgressBar();
                 refreshNavGating();
-            }, 400);
+            }, 200);
+
+            const counter = document.getElementById("buildCounter");
+            if (counter) counter.textContent = "";
 
             return;
         }
@@ -170,6 +167,11 @@ async function pollBuildProgressLoop() {
         const total = data.total_tracks || 1;
         const current = data.tracks_processed || 0;
 
+        const counter = document.getElementById("buildCounter");
+        if (counter) {
+            counter.textContent = `${current.toLocaleString()} / ${total.toLocaleString()}`;
+        }
+
         if (optimisticCap === 0) {
             const firstChunk = Math.min(100, total);
             optimisticCap = firstChunk / total;
@@ -182,7 +184,7 @@ async function pollBuildProgressLoop() {
 
         progressTarget = Math.max(progressTarget, realProgress);
 
-        setTimeout(pollBuildProgressLoop, 400);
+        setTimeout(pollBuildProgressLoop, 120);
 
     } catch (e) {
         pollingActive = false;

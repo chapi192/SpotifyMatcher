@@ -28,7 +28,7 @@ function formatBucketLabel(label, mode) {
 
     // if you later add 5-year grouping:
     if (mode === "five") {
-        return `${year}–${year + 4}`;
+        return `${year}-${year + 4}`;
     }
 
     return label;
@@ -189,7 +189,7 @@ export function renderReleaseYears(data, currentSelection) {
             <div class="ws-avg-title">
                 Release Span:
                 <span class="ws-avg-inline-number">
-                    ${data.oldest_year}–${data.newest_year}
+                    ${data.oldest_year}-${data.newest_year}
                 </span>
             </div>
 
@@ -231,15 +231,6 @@ export function renderReleaseYears(data, currentSelection) {
 
                 <div class="ws-release-controls">
 
-                    <span 
-                        class="ws-panel-help ws-help"
-                        data-tooltip="Dominant Era – most commonly appearing decade.\n
-Distribution – concentration across decades.
-\nGenerational Lean – most represented generation of selection."
-                        ">
-                        ?
-                    </span>
-
                     <button class="ws-swap-btn" data-type="bar">Bar</button>
                     <button class="ws-swap-btn" data-type="spiral">Spiral</button>
                     <button class="ws-swap-btn" data-type="ring">Ring</button>
@@ -248,7 +239,19 @@ Distribution – concentration across decades.
 
                 <div class="ws-release-panel">
 
-                    <div class="ws-artist-card">
+                    <div class="ws-artist-card ws-release-dominant">
+
+                        <span 
+                            class="ws-panel-help ws-help"
+                            data-tooltip="Dominant Era - Most commonly appearing decade.
+
+                            Distribution - Concentration across decades.
+
+                            Generational Lean - Most represented generation of selection."
+                        >
+                        ?
+                        </span>
+                        
                         <div class="ws-artist-label">Newest</div>
                         <div class="ws-artist-value">
                             ${
@@ -275,6 +278,7 @@ Distribution – concentration across decades.
                     </div>
 
                     <div class="ws-artist-card">
+
                         <div class="ws-artist-label">Dominant Era</div>
                         <div class="ws-artist-value">
                             ${
@@ -339,7 +343,7 @@ function updateReleaseYearsView(data, currentSelection) {
     // Update header numbers
     const spanEl = document.querySelector(".ws-avg-inline-number");
     if (spanEl) {
-        spanEl.textContent = `${data.oldest_year}–${data.newest_year}`;
+        spanEl.textContent = `${data.oldest_year}-${data.newest_year}`;
     }
 
     const { mode, labels, values } = buildTimeSeries(data);

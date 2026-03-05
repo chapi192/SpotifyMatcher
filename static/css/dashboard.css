@@ -4,8 +4,8 @@
 
 .playlist-grid {
     display: grid;
-    grid-template-columns: repeat(5, 280px);
-    gap: 28px;
+    grid-template-columns: repeat(auto-fill, 180px);
+    gap: 34px;
     justify-content: center;
 }
 
