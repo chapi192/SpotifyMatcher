@@ -4,16 +4,17 @@
 
 {% block content %}
 
+<!-- title -->
 <div class="workspace-header">
     <h2>Your Analysis Workspace</h2>
 </div>
 
 <div class="ws-layout">
 
-    <!-- LEFT SIDEBAR -->
+    <!-- left side -->
     <div class="ws-sidebar">
 
-        <!-- METRICS -->
+        <!-- metric tabs -->
         <div class="ws-controls-vertical">
 
             <button class="ws-metric-btn"
@@ -42,14 +43,15 @@
 
         </div>
 
-        <hr style="margin:18px 0; opacity:0.15;">
+        <!-- spacing between scroll area and buttons -->
+        <hr style="margin:10px 0; opacity:0.15;">
 
-        <!-- PLAYLISTS WILL RENDER HERE -->
+        <!-- playlist scroll section -->
         <div id="wsPlaylistSection"></div>
 
     </div>
 
-    <!-- MAIN CONTENT -->
+    <!-- main/right side -->
     <div class="ws-main">
         <div class="ws-analytics">
             <div id="wsAnalyticsOutput" class="ws-analytics-inner">

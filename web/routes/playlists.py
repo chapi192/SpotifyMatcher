@@ -135,7 +135,6 @@ def update_selection(request: Request, data: dict = Body(...)):
         "hidden_ids": hidden_ids
     }
 
-
 @router.get("/api/selection")
 def get_selection(request: Request):
     return {
