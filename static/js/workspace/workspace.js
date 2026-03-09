@@ -9,6 +9,7 @@ import { renderGenres } from "./metrics/genres.js";
 import { renderPlaylistSections, wireWorkspaceGlobals } from "./ui.js";
 import { wsChartInstance, clearChartInstance } from "./state.js";
 import { initTooltipSystem } from "./tooltip.js";
+import { renderAlbumFrequency } from "./metrics/albums.js";
 
 async function loadWorkspace() {
     const data = await fetchLibrary();
@@ -162,6 +163,8 @@ async function maybeRenderAnalytics() {
         renderPlaylistProfile(selectedData, currentSelection);
     } else if (currentMetric === "genres") {
         renderGenres(selectedData, currentSelection);
+    } else if (currentMetric === "album-frequency") {
+        renderAlbumFrequency(selectedData, currentSelection);
     }
 }
 

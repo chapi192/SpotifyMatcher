@@ -722,7 +722,7 @@
     position: relative;
 }
 
-.ws-artist-card .ws-genres-card .ws-panel-help {
+.ws-artist-card .ws-genres-card .ws-album-card .ws-panel-help {
     position: absolute;
     top: 4px;
     right: 4px;
@@ -1022,6 +1022,10 @@
     padding-right: 0;
 }
 
+.ws-album-full .ws-avg-header {
+    padding-right: 0;
+}
+
 /* =========================================
    WORKSPACE — PLAYLIST LIST
 ========================================= */
@@ -1251,4 +1255,174 @@
 #wsPlaylistSection .playlist-card {
     box-sizing: border-box;
     width: calc(100% - 10px);
+}
+
+/* =========================================
+   ALBUM FREQUENCY
+========================================= */
+
+.ws-album-header-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    margin-top: -1px;
+}
+
+.ws-album-selection-left {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+
+.ws-album-layout {
+    display: grid;
+    grid-template-columns: 340px minmax(0, 1fr);
+    gap: 60px;
+    align-items: start;
+}
+
+.ws-album-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.ws-album-card {
+    padding: 16px 20px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ws-album-label {
+    font-size: 12px;
+    opacity: 0.6;
+    letter-spacing: 0.4px;
+}
+
+.ws-album-value {
+    font-size: 14px;
+    font-weight: 600;
+
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.ws-album-value a {
+    color: var(--accent-green);
+    text-decoration: none;
+
+    display: inline-block;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ws-album-value a:hover {
+    text-decoration: underline;
+}
+
+/* right side */
+
+.ws-album-right {
+    display: flex;
+    flex-direction: column;
+}
+
+/* chart */
+
+.ws-album-chart {
+    padding-bottom: 9px;
+    position: relative;
+    height: 420px;
+
+    transform-origin: top center;
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.ws-album-chart canvas {
+    position: relative;
+    z-index: 1;
+}
+
+/* active album card */
+
+.ws-album-active {
+    margin-top: 0;
+    transition: opacity 180ms ease;
+}
+
+.ws-album-active.ws-fading {
+    opacity: 0;
+}
+
+.ws-album-active-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* album cover */
+
+.ws-album-active-img {
+    width: 56px;
+    height: 56px;
+    overflow: hidden;
+}
+
+.ws-album-active-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* text */
+
+.ws-album-active-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ws-album-active-name {
+    font-size: 20px;
+    font-weight: 750;
+    letter-spacing: 0.6px;
+
+    color: var(--albumColor, #ffffff);
+
+    text-decoration: none;
+    transition: color 0.25s ease;
+}
+
+.ws-album-active-name:hover {
+    text-decoration: underline;
+}
+
+.ws-album-active-meta {
+    font-size: 13px;
+    opacity: 0.7;
+    letter-spacing: 0.3px;
+}
+
+.ws-album-active-img {
+    width: 64px;
+    height: 64px;
+    border-radius: 6px;
+    overflow: hidden;
+    transition: opacity 220ms ease;
 }

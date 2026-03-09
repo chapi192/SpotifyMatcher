@@ -6,14 +6,10 @@ def format_genre(g):
     if not g:
         return g
 
-    # title case words
     g = " ".join(word.capitalize() for word in g.split())
-
-    # fix common acronyms
     g = g.replace("R&b", "R&B")
     g = g.replace("Edm", "EDM")
     g = g.replace("Uk ", "UK ")
-
     return g
 
 def safe_spotify_call(func, *args, **kwargs):
@@ -27,6 +23,82 @@ def safe_spotify_call(func, *args, **kwargs):
             else:
                 raise
 
+def _hydrate_artists(sp, artist_ids, artist_cache):
+    if not artist_ids:
+        return
+
+    artist_list = list(artist_ids)
+
+    for i in range(0, len(artist_list), 50):
+        batch = artist_list[i:i + 50]
+        artist_results = safe_spotify_call(sp.artists, batch)
+
+        for artist in (artist_results.get("artists") or []):
+            if not artist:
+                continue
+
+            aid = artist.get("id")
+            if not aid:
+                continue
+
+            images = artist.get("images") or []
+            image_url = images[0]["url"] if images else None
+
+            artist_cache[aid] = {
+                "genres": [format_genre(g) for g in (artist.get("genres") or [])],
+                "image_url": image_url
+            }
+
+def _append_tracks_from_page(page_items, playlist_tracks, artist_cache):
+    for item in page_items:
+        track = item.get("track")
+        if not track:
+            continue
+
+        track_id = track.get("id")
+        track_name = track.get("name")
+
+        album_data = track.get("album") or {}
+
+        external_urls = track.get("external_urls") or {}
+        spotify_url = external_urls.get("spotify")
+
+        track_artists = []
+        for a in (track.get("artists") or []):
+            if not a:
+                continue
+
+            aid = a.get("id")
+            aname = a.get("name")
+            if not aid or not aname:
+                continue
+
+            meta = artist_cache.get(aid, {})
+            track_artists.append({
+                "artist_id": aid,
+                "artist_name": aname,
+                "genres": meta.get("genres", []),
+                "image_url": meta.get("image_url"),
+            })
+
+        playlist_tracks.append({
+            "track_id": track_id,
+            "track_name": track_name,
+            "popularity": track.get("popularity"),
+            "duration_ms": track.get("duration_ms"),
+            "explicit": track.get("explicit"),
+            "track_number": track.get("track_number"),
+            "disc_number": track.get("disc_number"),
+            "preview_url": track.get("preview_url"),
+            "spotify_url": spotify_url,
+            "album": {
+                "album_id": album_data.get("id"),
+                "album_name": album_data.get("name"),
+                "release_date": album_data.get("release_date"),
+                "total_tracks": album_data.get("total_tracks"),
+            },
+            "artists": track_artists
+        })
 
 def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None, cancel_check=None):
 
@@ -35,125 +107,16 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None, ca
 
     playlist_tracks = []
 
-    # =====================================================
-    # HANDLE LIKED SONGS
-    # =====================================================
     if pid == "__liked__":
-
         playlist_name = "Liked Songs"
         playlist_image = "https://misc.scdn.co/liked-songs/liked-songs-300.png"
 
-        meta = safe_spotify_call(
-            sp.current_user_saved_tracks,
-            limit=1
-        )
-
+        meta = safe_spotify_call(sp.current_user_saved_tracks, limit=1)
         playlist_total_tracks = meta["total"]
 
-        results = safe_spotify_call(
-            sp.current_user_saved_tracks,
-            limit=50
-        )
+        results = safe_spotify_call(sp.current_user_saved_tracks, limit=50)
 
-        while True:
-
-            if cancel_check and cancel_check():
-                return None
-
-            page_items = results["items"]
-            fetched_this_page = len(page_items)
-
-            if progress_callback:
-                progress_callback(fetched_this_page)
-
-            page_artist_ids = set()
-
-            for item in page_items:
-                track = item["track"]
-                if not track:
-                    continue
-
-                for artist in track.get("artists", []):
-                    artist_id = artist.get("id")
-                    if not artist_id:
-                        continue
-                    if artist_id not in artist_cache:
-                        page_artist_ids.add(artist_id)
-
-            if page_artist_ids:
-                artist_list = list(page_artist_ids)
-
-                for i in range(0, len(artist_list), 50):
-                    batch = artist_list[i:i + 50]
-                    artist_results = safe_spotify_call(sp.artists, batch)
-
-                    for artist in artist_results.get("artists", []):
-                        if not artist:
-                            continue
-                        if not artist.get("id"):
-                            continue
-
-                        images = artist.get("images") or []
-                        image_url = images[0]["url"] if images else None
-
-                        artist_cache[artist["id"]] = {
-                            "genres": [format_genre(g) for g in artist.get("genres", [])],
-                            "image_url": image_url
-                        }
-
-            for item in page_items:
-                track = item["track"]
-                if not track:
-                    continue
-
-                track_artists = []
-
-                for a in track.get("artists", []):
-                    if not a or not a.get("id"):
-                        continue
-                    meta = artist_cache.get(a["id"], {})
-                    track_artists.append({
-                        "artist_id": a["id"],
-                        "artist_name": a["name"],
-                        "genres": meta.get("genres", []),
-                        "image_url": meta.get("image_url"),
-                    })
-                album_data = track.get("album") or {}
-                external_urls = track.get("external_urls") or {}
-                spotify_url = external_urls.get("spotify")
-
-                playlist_tracks.append({
-                    "track_id": track["id"],
-                    "track_name": track["name"],
-                    "popularity": track["popularity"],
-                    "duration_ms": track["duration_ms"],
-                    "explicit": track["explicit"],
-                    "track_number": track["track_number"],
-                    "disc_number": track["disc_number"],
-                    "preview_url": track["preview_url"],
-                    "spotify_url": spotify_url,
-                    "album": {
-                        "album_id": album_data.get("id"),
-                        "album_name": album_data.get("name"),
-                        "release_date": album_data.get("release_date"),
-                        "total_tracks": album_data.get("total_tracks")
-                    },
-                    "artists": track_artists
-                })
-
-            if not results["next"]:
-                break
-
-            if cancel_check and cancel_check():
-                return None
-
-            results = safe_spotify_call(sp.next, results)
-
-    # =====================================================
-    # HANDLE NORMAL PLAYLISTS
-    # =====================================================
     else:
-
         playlist_meta = safe_spotify_call(
             sp.playlist,
             pid,
@@ -174,99 +137,39 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None, ca
             fields="items(track(id,name,popularity,duration_ms,explicit,track_number,disc_number,preview_url,external_urls,album(id,name,release_date,total_tracks),artists(id,name))),next"
         )
 
-        while True:
+    while True:
 
-            if cancel_check and cancel_check():
-                return None
-            
-            page_items = results["items"]
-            fetched_this_page = len(page_items)
+        if cancel_check and cancel_check():
+            return None
 
-            if progress_callback:
-                progress_callback(fetched_this_page)
-                
-            page_artist_ids = set()
+        page_items = results.get("items") or []
 
-            for item in page_items:
-                track = item["track"]
-                if not track:
-                    continue
+        if progress_callback:
+            progress_callback(len(page_items))
 
-                for artist in track.get("artists", []):
-                    artist_id = artist.get("id")
-                    if not artist_id:
-                        continue
-                    if artist_id not in artist_cache:
-                        page_artist_ids.add(artist_id)
+        page_artist_ids = set()
 
-            if page_artist_ids:
-                artist_list = list(page_artist_ids)
+        for item in page_items:
+            track = item.get("track")
+            if not track:
+                continue
 
-                for i in range(0, len(artist_list), 50):
-                    batch = artist_list[i:i + 50]
-                    artist_results = safe_spotify_call(sp.artists, batch)
+            for artist in (track.get("artists") or []):
+                aid = artist.get("id")
+                if aid and aid not in artist_cache:
+                    page_artist_ids.add(aid)
 
-                    for artist in artist_results.get("artists", []):
-                        if not artist:
-                            continue
-                        if not artist.get("id"):
-                            continue
+        _hydrate_artists(sp, page_artist_ids, artist_cache)
 
-                        images = artist.get("images") or []
-                        image_url = images[0]["url"] if images else None
+        _append_tracks_from_page(page_items, playlist_tracks, artist_cache)
 
-                        artist_cache[artist["id"]] = {
-                            "genres": [format_genre(g) for g in artist.get("genres", [])],
-                            "image_url": image_url
-                        }
+        if not results.get("next"):
+            break
 
-            for item in page_items:
-                track = item["track"]
-                if not track:
-                    continue
+        if cancel_check and cancel_check():
+            return None
 
-                track_artists = []
-
-                for a in track.get("artists", []):
-                    if not a or not a.get("id"):
-                        continue
-                    meta = artist_cache.get(a["id"], {})
-                    track_artists.append({
-                        "artist_id": a["id"],
-                        "artist_name": a["name"],
-                        "genres": meta.get("genres", []),
-                        "image_url": meta.get("image_url"),
-                    })
-                album_data = track.get("album") or {}
-                external_urls = track.get("external_urls") or {}
-                spotify_url = external_urls.get("spotify")
-
-                playlist_tracks.append({
-                    "track_id": track["id"],
-                    "track_name": track["name"],
-                    "popularity": track["popularity"],
-                    "duration_ms": track["duration_ms"],
-                    "explicit": track["explicit"],
-                    "track_number": track["track_number"],
-                    "disc_number": track["disc_number"],
-                    "preview_url": track["preview_url"],
-                    "spotify_url": spotify_url,
-                    "album": {
-                        "album_id": album_data.get("id"),
-                        "album_name": album_data.get("name"),
-                        "release_date": album_data.get("release_date"),
-                        "total_tracks": album_data.get("total_tracks")
-                    },
-                    "artists": track_artists
-                })
-
-            if not results["next"]:
-                break
-
-            if cancel_check and cancel_check():
-                return None
-
-            results = safe_spotify_call(sp.next, results)
+        results = safe_spotify_call(sp.next, results)
 
     return {
         "playlist_id": pid,

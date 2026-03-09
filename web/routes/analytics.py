@@ -903,3 +903,161 @@ def genres(request: Request):
             "playlists": per_playlist
         }
     }
+
+from web.services.fetch_data import safe_spotify_call
+
+@router.get("/api/album-frequency")
+def album_frequency(request: Request):
+
+    result, err = get_dataset(request)
+    if err:
+        return err
+    
+    sp = get_spotify_client(request)
+    if not sp:
+        return {"status": "error", "message": "Not logged in"}
+
+    dataset, _profiles = result
+
+    import math
+
+    def compute_album_metrics(tracks):
+
+        track_count = 0
+        counts = {}
+        album_name_lookup = {}
+
+        for track in tracks:
+            track_count += 1
+
+            album = track.get("album") or {}
+            album_id = album.get("album_id")
+            album_name = album.get("album_name")
+
+            if not album_id or not album_name:
+                continue
+
+            counts[album_id] = counts.get(album_id, 0) + 1
+
+            if album_id not in album_name_lookup:
+                album_name_lookup[album_id] = album_name
+
+        if not counts or track_count == 0:
+            return None
+
+        sorted_albums = sorted(counts.items(), key=lambda x: x[1], reverse=True)
+        unique_albums = len(sorted_albums)
+
+        top_album_id, top_count = sorted_albums[0]
+        top_album_name = album_name_lookup[top_album_id]
+        dominance_pct = round((top_count / track_count) * 100, 1)
+
+        albums_1x = len([c for _, c in sorted_albums if c == 1])
+        unique_appearance_pct = round((albums_1x / unique_albums) * 100, 1)
+
+        multi_album_count = len([c for _, c in sorted_albums if c > 1])
+        multi_album_pct = round((multi_album_count / unique_albums) * 100, 1)
+
+        top10_tracks = sum(c for _, c in sorted_albums[:10])
+        top10_album_share = round((top10_tracks / track_count) * 100, 1)
+
+        entropy = 0
+        hhi = 0
+        for _, c in sorted_albums:
+            p = c / track_count
+            entropy += -p * math.log(p)
+            hhi += p ** 2
+
+        max_entropy = math.log(unique_albums) if unique_albums > 1 else 1
+        diversity_score = round((entropy / max_entropy) * 100, 1)
+
+        concentration_value = hhi * 100
+        if concentration_value < 2:
+            concentration = "Very Diverse"
+        elif concentration_value < 5:
+            concentration = "Diverse"
+        elif concentration_value < 10:
+            concentration = "Balanced"
+        elif concentration_value < 25:
+            concentration = "Leaning"
+        else:
+            concentration = "Dominated"
+
+        avg_tracks_per_album = round(track_count / unique_albums, 2)
+
+        return {
+            "track_count": track_count,
+            "unique_albums": unique_albums,
+
+            "diversity_score": diversity_score,
+            "concentration": concentration,
+
+            "multi_album_pct": multi_album_pct,
+            "top10_album_share": top10_album_share,
+
+            "top_album_name": top_album_name,
+            "top_album_id": top_album_id,
+            "dominance_pct": dominance_pct,
+
+            "unique_appearance_pct": unique_appearance_pct,
+            "avg_tracks_per_album": avg_tracks_per_album,
+
+            "top_10": [
+                {
+                    "album_id": album_id,
+                    "album_name": album_name_lookup[album_id],
+                    "count": c,
+                    "image_url": None
+                }
+                for album_id, c in sorted_albums[:10]
+            ]
+        }
+
+    combined_tracks = []
+    per_playlist = {}
+
+    for pid, playlist in dataset.items():
+        tracks = playlist.get("tracks", [])
+        stats = compute_album_metrics(tracks)
+        if not stats:
+            continue
+
+        per_playlist[pid] = {"playlist_name": playlist["playlist_name"], **stats}
+        combined_tracks.extend(tracks)
+
+    if not combined_tracks:
+        return {"status": "empty"}
+
+    combined_stats = compute_album_metrics(combined_tracks)
+
+    return {"status": "ready", "data": {"combined": combined_stats, "playlists": per_playlist}}
+
+@router.post("/api/album-images")
+async def album_images(request: Request):
+
+    body = await request.json()
+    ids = body.get("ids", [])
+
+    if not ids:
+        return {"albums": []}
+
+    sp = get_spotify_client(request)
+    if not sp:
+        return {"albums": []}
+
+    results = safe_spotify_call(sp.albums, ids)
+
+    out = []
+
+    for album in results.get("albums", []):
+        if not album:
+            continue
+
+        images = album.get("images") or []
+
+        out.append({
+            "album_id": album["id"],
+            "image_url": images[0]["url"] if images else None
+        })
+
+    return {"albums": out}

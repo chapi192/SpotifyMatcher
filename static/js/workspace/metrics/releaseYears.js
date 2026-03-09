@@ -72,13 +72,13 @@ function buildTimeSeries(data) {
 
         labels = grouping.labels;
 
-        values = labels.map(y => data.year_counts[y]);
+        values = labels.map(y => data.year_counts[y] ?? 0);
 
     } else {
 
         labels = grouping.labels;
 
-        values = labels.map(d => data.decade_counts[d]);
+        values = labels.map(d => data.decade_counts[d] ?? 0);
     }
 
     return {
