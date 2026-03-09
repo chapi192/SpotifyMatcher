@@ -10,16 +10,33 @@
 }
 
 @media (max-width: 1200px) {
-    .playlist-grid { grid-template-columns: repeat(4, 1fr); }
+
+    /* =========================================================
+       ⚠️ RESPONSIVE OVERRIDE PRESERVED
+       Changes grid behavior for medium screens
+       ========================================================= */
+
+    .playlist-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
 }
 
 @media (max-width: 900px) {
-    .playlist-grid { grid-template-columns: repeat(3, 1fr); }
+
+    /* =========================================================
+       ⚠️ RESPONSIVE OVERRIDE PRESERVED
+       Further grid reduction for small screens
+       ========================================================= */
+
+    .playlist-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
 }
 
 .hidden-card {
     opacity: 0.4;
 }
+
 
 /* =========================================
    DASHBOARD HEADER
