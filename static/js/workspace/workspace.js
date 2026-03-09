@@ -12,6 +12,18 @@ import { initTooltipSystem } from "./tooltip.js";
 import { renderAlbumFrequency } from "./metrics/albums.js";
 
 async function loadWorkspace() {
+
+    const selectionRes = await fetch("/api/selection");
+    const selection = await selectionRes.json();
+
+    if (selection.selected_ids.length === 0) {
+        setCurrentSelection("combined");
+    } else if (selection.selected_ids.length === 1) {
+        setCurrentSelection(selection.selected_ids[0]);
+    } else {
+        setCurrentSelection("combined");
+    }
+
     const data = await fetchLibrary();
 
     if (!data || data.status !== "ready") {
