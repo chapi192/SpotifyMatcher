@@ -1,0 +1,197 @@
+/* =========================================
+   UNIVERSAL BUTTON SYSTEM
+========================================= */
+
+.btn {
+    font-size: 11px;
+    letter-spacing: 1px;
+    padding: 6px 12px;
+
+    background: transparent;
+    border: 1px solid var(--accent-green-soft);
+    color: var(--accent-green);
+
+    cursor: pointer;
+
+    transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease;
+}
+
+.hide-bottom-btn {
+    font-size: 9px;
+    letter-spacing: 1px;
+    padding: 3px 8px;
+
+    background: transparent;
+    border: 1px solid;
+
+    cursor: pointer;
+
+    transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease;
+}
+
+.btn:hover,
+.hide-bottom-btn:hover {
+    transform: translateY(-2px);
+}
+
+.dashboard-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* Green buttons */
+
+.btn,
+.hide-bottom-btn {
+    border-color: var(--accent-green-soft);
+    color: var(--accent-green);
+}
+
+.btn:hover,
+.hide-bottom-btn:hover {
+    border-color: var(--accent-green);
+    box-shadow: 0 0 8px rgba(29,185,84,0.6);
+}
+
+
+/* =========================================
+   PLAYLIST META ROW
+========================================= */
+
+.playlist-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    width: 170px;
+    margin-top: 4px;
+}
+
+
+/* =========================================
+   PLAYLIST CARD
+========================================= */
+
+.playlist-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+
+    padding: 2px 2px;
+    gap: 2px;
+
+    background: var(--bg-card);
+    backdrop-filter: blur(4px);
+
+    width: 180px;
+}
+
+.playlist-row-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.playlist-cover {
+    width: 170px;
+    height: 170px;
+    margin-top: 4px;
+    overflow: hidden;
+}
+
+.playlist-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.playlist-info {
+    display: flex;
+    flex-direction: column;
+
+    width: 170px;
+    min-width: 0;
+}
+
+.playlist-name {
+    font-size: 20px;
+    font-weight: 600;
+    color: #e5e7eb;
+
+    width: 170px;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.playlist-count {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent-green);
+}
+
+
+/* =========================================
+   TRACE BORDER SYSTEM
+========================================= */
+
+.playlist-card::before {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    pointer-events: none;
+
+    background-image:
+        linear-gradient(var(--accent-green), var(--accent-green)),
+        linear-gradient(var(--accent-green), var(--accent-green)),
+        linear-gradient(var(--accent-green), var(--accent-green)),
+        linear-gradient(var(--accent-green), var(--accent-green));
+
+    background-repeat: no-repeat;
+    background-position:
+        top left,
+        top right,
+        bottom right,
+        bottom left;
+
+    background-size:
+        0% 2px,
+        2px 0%,
+        0% 2px,
+        2px 0%;
+
+    opacity: 0;
+    transition: opacity 0.35s ease;
+}
+
+@keyframes traceSquare {
+    0% { background-size: 0% 2px, 2px 0%, 0% 2px, 2px 0%; }
+    25% { background-size: 100% 2px, 2px 0%, 0% 2px, 2px 0%; }
+    50% { background-size: 100% 2px, 2px 100%, 0% 2px, 2px 0%; }
+    75% { background-size: 100% 2px, 2px 100%, 100% 2px, 2px 0%; }
+    100% { background-size: 100% 2px, 2px 100%, 100% 2px, 2px 100%; }
+}
+
+.playlist-card:not(.selected):not(.cooldown):hover::before {
+    opacity: 1;
+    animation: traceSquare 0.45s linear forwards;
+}
+
+.playlist-card.selected::before {
+    opacity: 1;
+    background-size:
+        100% 2px,
+        2px 100%,
+        100% 2px,
+        2px 100%;
+}

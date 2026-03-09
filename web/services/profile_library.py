@@ -19,29 +19,36 @@ def build_playlist_profiles(dataset):
         decade_counter = Counter()
 
         for track in tracks:
+            try:
+                if track.get("duration_ms"):
+                    durations.append(track["duration_ms"])
 
-            if track.get("duration_ms"):
-                durations.append(track["duration_ms"])
+                if track.get("popularity") is not None:
+                    track_pops.append(track["popularity"])
 
-            if track.get("popularity") is not None:
-                track_pops.append(track["popularity"])
+                album = track.get("album") or {}
+                release_date = album.get("release_date")
 
-            release_date = track.get("album", {}).get("release_date")
-            if release_date and len(release_date) >= 4:
-                try:
-                    year = int(release_date[:4])
-                    decade = (year // 10) * 10
-                    decade_counter[decade] += 1
-                except:
-                    pass
+                if isinstance(release_date, str) and len(release_date) >= 4:
+                    try:
+                        year = int(release_date[:4])
+                        decade = (year // 10) * 10
+                        decade_counter[decade] += 1
+                    except Exception:
+                        pass
 
-            for artist in track.get("artists", []):
-                name = artist.get("artist_name")
-                if name:
-                    artist_counter[name] += 1
+                for artist in track.get("artists", []):
+                    name = artist.get("artist_name")
+                    if name:
+                        artist_counter[name] += 1
 
-                for genre in artist.get("genres", []):
-                    genre_counter[genre] += 1
+                    for genre in artist.get("genres", []):
+                        genre_counter[genre] += 1
+                
+            except Exception as e:
+                print("PROFILE ERROR ON TRACK:")
+                print(track)
+                raise
 
         profiles[pid] = {
             "playlist_id": pid,

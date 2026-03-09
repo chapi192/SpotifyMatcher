@@ -1,65 +1,282 @@
 {% extends "base.html" %}
 
+{% block extra_css %}
+
+<link rel="stylesheet" href="/static/css/recommendations.css">
+{% endblock %}
+
 {% block content %}
 
-<h2 style="font-size:32px;">Playlist Breakdown</h2>
+<div class="rec-page">
 
-<div style="margin-top:20px;">
-    <button class="btn" onclick="loadBreakdown()">
-        Run Breakdown
-    </button>
+```
+<h2 class="rec-title">Playlist Recommendations</h2>
+
+<div class="rec-layout">
+
+    <!-- LEFT PANEL -->
+    <div class="rec-track-panel">
+
+        <div class="rec-track-header">
+            <span id="breakdownTitle">Loading...</span>
+        </div>
+
+        <div id="trackList" class="rec-track-scroll"></div>
+
+    </div>
+
+
+    <!-- RIGHT PANEL -->
+    <div class="rec-analysis-panel">
+
+        <!-- WEIGHTS -->
+        <div class="rec-weights">
+
+            <div class="rec-weight">
+                <label>Genre</label>
+                <select id="genreWeight">
+                    <option value="5">Critical</option>
+                    <option value="4">High</option>
+                    <option value="3">Medium</option>
+                    <option value="1">Low</option>
+                    <option value="0">Ignore</option>
+                </select>
+            </div>
+
+            <div class="rec-weight">
+                <label>Artist</label>
+                <select id="artistWeight">
+                    <option value="5">Critical</option>
+                    <option value="4">High</option>
+                    <option value="3">Medium</option>
+                    <option value="1">Low</option>
+                    <option value="0">Ignore</option>
+                </select>
+            </div>
+
+            <div class="rec-weight">
+                <label>Album</label>
+                <select id="albumWeight">
+                    <option value="5">Critical</option>
+                    <option value="4">High</option>
+                    <option value="3">Medium</option>
+                    <option value="1">Low</option>
+                    <option value="0">Ignore</option>
+                </select>
+            </div>
+
+            <div class="rec-weight">
+                <label>Decade</label>
+                <select id="decadeWeight">
+                    <option value="5">Critical</option>
+                    <option value="4">High</option>
+                    <option value="3">Medium</option>
+                    <option value="1">Low</option>
+                    <option value="0">Ignore</option>
+                </select>
+            </div>
+
+        </div>
+
+
+        <!-- TRACK ANALYSIS -->
+        <div id="analysisPanel" class="rec-analysis"></div>
+
+
+        <!-- NAVIGATION -->
+        <div class="rec-nav">
+
+            <button onclick="prevTrack()">Prev</button>
+            <button onclick="nextTrack()">Next</button>
+
+        </div>
+
+    </div>
+
 </div>
+```
 
-<div id="results" style="margin-top:40px;"></div>
+</div>
 
 <script>
 
-async function loadBreakdown() {
+let tracks = []
+let currentTrackIndex = 0
+let breakdownName = ""
 
-    const res = await fetch("/api/breakdown");
-    const data = await res.json();
 
-    const container = document.getElementById("results");
-    container.innerHTML = "";
+async function loadRecommendations() {
 
-    if (data.error) {
-        container.innerHTML = `<p style="color:#f87171;">${data.error}</p>`;
-        return;
+    const artist = document.getElementById("artistWeight").value
+    const genre = document.getElementById("genreWeight").value
+    const album = document.getElementById("albumWeight").value
+    const decade = document.getElementById("decadeWeight").value
+
+    const url =
+        `/api/recommendation-breakdown?artist=${artist}&genre=${genre}&album=${album}&decade=${decade}`
+
+    const res = await fetch(url)
+
+    const raw = await res.text()   // read body ONCE
+
+    let data
+
+    try {
+        data = JSON.parse(raw)
+    } catch (e) {
+        console.error("SERVER ERROR:\n", raw)
+        document.getElementById("breakdownTitle").innerText = "Server error (check console)"
+        return
     }
 
     if (data.status !== "ready") {
-        container.innerHTML = `<p>No breakdown available.</p>`;
-        return;
+        document.getElementById("breakdownTitle").innerText =
+            data.message || "Unable to load recommendations"
+
+        document.getElementById("analysisPanel").innerHTML = ""
+        document.getElementById("trackList").innerHTML = ""
+        return
     }
 
-    let html = "";
+    breakdownName = data.data.breakdown_playlist.name
+    tracks = data.data.tracks
+    currentTrackIndex = 0
 
-    html += `<h3>Source Playlist</h3>`;
-    html += `<p><strong>${data.source_playlist_name}</strong></p>`;
+    document.getElementById("breakdownTitle").innerText = breakdownName
 
-    html += `<h3 style="margin-top:30px;">Track Routing</h3>`;
-    html += `<ul style="line-height:1.6;">`;
-
-    data.results.forEach(r => {
-
-        const bestId = r.best_match_playlist_id;
-        const bestScore = r.scores[bestId];
-        const bestName = data.targets[bestId] || bestId;
-
-        html += `
-            <li>
-                <strong>${r.track_name}</strong><br>
-                → Best Match: <strong>${bestName}</strong>
-                (score: ${bestScore})
-            </li>
-            <br>
-        `;
-    });
-
-    html += `</ul>`;
-
-    container.innerHTML = html;
+    renderTrackList()
+    renderTrackAnalysis()
 }
+
+function renderTrackList() {
+
+    const container = document.getElementById("trackList")
+    container.innerHTML = ""
+
+    tracks.forEach((track, i) => {
+
+        const div = document.createElement("div")
+
+        div.className = "rec-track-item"
+
+        if (i === currentTrackIndex)
+            div.classList.add("active")
+
+        div.innerText = track.track_name
+
+        div.onclick = () => {
+            currentTrackIndex = i
+            renderTrackList()
+            renderTrackAnalysis()
+        }
+
+        container.appendChild(div)
+
+    })
+
+}
+
+
+function renderTrackAnalysis() {
+
+    const panel = document.getElementById("analysisPanel")
+
+    const track = tracks[currentTrackIndex]
+
+    if (!track) return
+
+    let html = `
+    <h3>${track.track_name}</h3>
+
+    <div style="opacity:.7;font-size:13px;margin-bottom:12px;">
+    Artist: ${(track.artists || []).join(", ")}
+    Genres: ${(track.genres || []).join(", ") || "none"}
+    Album: ${track.album_name || "unknown"}<br>
+    Release: ${track.release_date || "unknown"}
+    </div>
+    `
+
+    if (!track.recommendations.length) {
+
+        html += `<p class="rec-none">No good matches</p>`
+
+    } else {
+
+        track.recommendations.forEach(rec => {
+
+            html += `
+            <div class="rec-card">
+
+                <div class="rec-card-title">
+                    ${rec.playlist_name}
+                </div>
+
+                <div class="rec-score">
+                    Score: ${rec.score}
+                </div>
+
+                <div class="rec-reasons">
+                    ${rec.reasons.join(", ") || "none"}
+                </div>
+
+                <div style="font-size:12px;opacity:.6;">
+                Artist match: ${rec.signals.artistMatch.join(", ") || "none"}<br>
+                Genre match: ${rec.signals.genreMatches.join(", ") || "none"}<br>
+                Album match: ${rec.signals.albumMatch}<br>
+                Decade match: ${rec.signals.decadeMatch}
+                </div>
+
+            </div>
+            `
+        })
+
+    }
+
+    panel.innerHTML = html
+
+}
+
+
+function nextTrack() {
+
+    if (currentTrackIndex < tracks.length - 1) {
+
+        currentTrackIndex++
+
+        renderTrackList()
+        renderTrackAnalysis()
+
+    }
+
+}
+
+
+function prevTrack() {
+
+    if (currentTrackIndex > 0) {
+
+        currentTrackIndex--
+
+        renderTrackList()
+        renderTrackAnalysis()
+
+    }
+
+}
+
+
+document.querySelectorAll("select").forEach(el => {
+
+    el.addEventListener("change", () => {
+
+        loadRecommendations()
+
+    })
+
+})
+
+
+loadRecommendations()
 
 </script>
 

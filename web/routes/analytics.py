@@ -1,9 +1,15 @@
+from itertools import count
+
 from fastapi import APIRouter, Request
 from web.spotify_auth import get_spotify_client
 from web.routes.library import get_active_dataset_and_profiles
 import math
 import statistics
 from collections import Counter
+from web.routes.recommendations import (
+    recommendation_breakdown,
+    recommendation_profiles
+)
 
 router = APIRouter()
 
@@ -65,6 +71,17 @@ def avg_length(request: Request):
         long_pct = len([x for x in durations if x > 300]) / n * 100
         radio_pct = len([x for x in durations if 150 <= x <= 270]) / n * 100
 
+        # Total runtime (seconds)
+        total_runtime_seconds = sum(durations)
+
+        # Flow density: % of tracks within ±30 sec of average
+        flow_band = 30
+        flow_count = len([
+            x for x in durations
+            if abs(x - avg) <= flow_band
+        ])
+        flow_density = (flow_count / n) * 100
+
         # Find actual track objects
         shortest_track = min(tracks, key=lambda t: t["duration_ms"])
         longest_track = max(tracks, key=lambda t: t["duration_ms"])
@@ -78,6 +95,8 @@ def avg_length(request: Request):
             "long_pct": round(long_pct, 2),
             "radio_pct": round(radio_pct, 2),
             "durations": durations_sorted,
+            "total_runtime_seconds": round(total_runtime_seconds, 2),
+            "flow_density_pct": round(flow_density, 2),
             "shortest_track": {
                 "name": shortest_track["track_name"],
                 "seconds": round(min_v, 2),
@@ -263,18 +282,49 @@ def artist_frequency(request: Request):
 
     def compute_artist_metrics(tracks):
 
-        counts = {}
+        import math
+
         total_tracks = 0
+        total_artist_instances = 0
+        max_artists_on_track = 0
+        multi_artist_tracks = 0
+        max_artist_track = None
+
+        counts = {}
+        artist_meta_lookup = {}
 
         for track in tracks:
             total_tracks += 1
-            for artist in track.get("artists", []):
-                name = artist.get("artist_name")
-                if not name:
-                    continue
-                counts[name] = counts.get(name, 0) + 1
 
-        if not counts:
+            track_artists = track.get("artists", [])
+            artist_count_on_track = len(track_artists)
+
+            total_artist_instances += artist_count_on_track
+
+            if artist_count_on_track > max_artists_on_track:
+                max_artists_on_track = artist_count_on_track
+                max_artist_track = track
+
+            if artist_count_on_track > 1:
+                multi_artist_tracks += 1
+
+            for artist in track_artists:
+                artist_id = artist.get("artist_id")
+                artist_name = artist.get("artist_name")
+
+                if not artist_id or not artist_name:
+                    continue
+
+                counts[artist_id] = counts.get(artist_id, 0) + 1
+
+                # store metadata once
+                if artist_id not in artist_meta_lookup:
+                    artist_meta_lookup[artist_id] = {
+                        "artist_name": artist_name,
+                        "image_url": artist.get("image_url")
+                    }
+
+        if not counts or total_artist_instances == 0:
             return None
 
         sorted_artists = sorted(
@@ -283,28 +333,114 @@ def artist_frequency(request: Request):
             reverse=True
         )
 
-        top_10 = sorted_artists[:10]
-        top_5_total = sum(c for _, c in sorted_artists[:5])
-        top_1_total = sorted_artists[0][1]
+        unique_artists = len(sorted_artists)
 
-        dominance_pct = round(top_1_total / total_tracks * 100, 1)
-        concentration_pct = round(top_5_total / total_tracks * 100, 1)
+        # ---------------------------------
+        # Top Artist
+        # ---------------------------------
 
-        long_tail_count = len([c for _, c in sorted_artists if c == 1])
-        long_tail_pct = round(long_tail_count / len(sorted_artists) * 100, 1)
+        top_artist_id = sorted_artists[0][0]
+        top_artist_count = sorted_artists[0][1]
 
-        artist_density = round(len(sorted_artists) / total_tracks, 2)
+        top_artist_name = artist_meta_lookup[top_artist_id]["artist_name"]
+
+        # we assume artist_id is available in track["artists"]
+        top_artist_id = None
+        for track in tracks:
+            for artist in track.get("artists", []):
+                if artist.get("artist_name") == top_artist_name:
+                    top_artist_id = artist.get("artist_id")
+                    break
+            if top_artist_id:
+                break
+
+        dominance_pct = round(top_artist_count / total_artist_instances * 100, 1)
+
+        # ---------------------------------
+        # Long Tail
+        # ---------------------------------
+
+        artists_1x = len([c for _, c in sorted_artists if c == 1])
+        unique_appearance_pct = round(artists_1x / unique_artists * 100, 1)
+
+        # ---------------------------------
+        # Diversity + Concentration
+        # ---------------------------------
+
+        entropy = 0
+        hhi = 0
+
+        for _, count in sorted_artists:
+            p = count / total_artist_instances
+            entropy += -p * math.log(p)
+            hhi += p ** 2
+
+        max_entropy = math.log(unique_artists) if unique_artists > 1 else 1
+        diversity_score = round((entropy / max_entropy) * 100, 1)
+
+        concentration_value = hhi * 100
+
+        # categorical mapping
+        if concentration_value < 2:
+            concentration = "Very Diverse"
+        elif concentration_value < 5:
+            concentration = "Diverse"
+        elif concentration_value < 10:
+            concentration = "Balanced"
+        elif concentration_value < 25:
+            concentration = "Leaning"
+        else:
+            concentration = "Dominated"
+
+        # ---------------------------------
+        # Averages
+        # ---------------------------------
+
+        avg_tracks_per_artist = round(total_artist_instances / unique_artists, 2)
+        avg_artists_per_track = round(total_artist_instances / total_tracks, 2)
+        multi_artist_track_pct = round(multi_artist_tracks / total_tracks * 100, 1)
+
+        # ---------------------------------
+        # Max Artist Track Info
+        # ---------------------------------
+
+        max_artist_track_name = None
+        max_artist_track_id = None
+
+        if max_artist_track:
+            max_artist_track_name = max_artist_track.get("track_name")
+            max_artist_track_id = max_artist_track.get("track_id")
 
         return {
             "track_count": total_tracks,
-            "unique_artists": len(sorted_artists),
-            "artist_density": artist_density,
+            "unique_artists": unique_artists,
+
+            "diversity_score": diversity_score,
+            "concentration": concentration,
+
+            "top_artist_name": top_artist_name,
+            "top_artist_id": top_artist_id,
             "dominance_pct": dominance_pct,
-            "concentration_pct": concentration_pct,
-            "long_tail_pct": long_tail_pct,
+
+            "unique_appearance_pct": unique_appearance_pct,
+
+            "avg_tracks_per_artist": avg_tracks_per_artist,
+
+            "avg_artists_per_track": avg_artists_per_track,
+            "multi_artist_track_pct": multi_artist_track_pct,
+
+            "max_artists_on_track": max_artists_on_track,
+            "max_artist_track_name": max_artist_track_name,
+            "max_artist_track_id": max_artist_track_id,
+
             "top_10": [
-                {"artist_name": n, "count": c}
-                for n, c in top_10
+                {
+                    "artist_id": artist_id,
+                    "artist_name": artist_meta_lookup[artist_id]["artist_name"],
+                    "count": count,
+                    "image_url": artist_meta_lookup[artist_id]["image_url"]
+                }
+                for artist_id, count in sorted_artists[:10]
             ]
         }
 
@@ -354,6 +490,9 @@ def release_years(request: Request):
 
     def compute_year_metrics(tracks):
 
+        oldest_track = None
+        newest_track = None
+
         years = []
 
         for track in tracks:
@@ -373,6 +512,23 @@ def release_years(request: Request):
         newest = max(years)
         median_year = int(statistics.median(years))
         span = newest - oldest
+
+        for track in tracks:
+            release_date = track.get("album", {}).get("release_date")
+            if release_date and len(release_date) >= 4:
+                year = int(release_date[:4])
+
+                if year == oldest and not oldest_track:
+                    oldest_track = {
+                        "name": track.get("name"),
+                        "url": track.get("external_urls", {}).get("spotify")
+                    }
+
+                if year == newest and not newest_track:
+                    newest_track = {
+                        "name": track.get("name"),
+                        "url": track.get("external_urls", {}).get("spotify")
+                    }
 
         # Decade buckets
         decade_counts = {}
@@ -395,7 +551,9 @@ def release_years(request: Request):
             "newest_year": newest,
             "median_year": median_year,
             "year_span": span,
-            "recency_score": recency_score
+            "recency_score": recency_score, 
+            "oldest_track": oldest_track,
+            "newest_track": newest_track
         }
 
     combined_tracks = []
@@ -555,3 +713,351 @@ def playlist_profile(request: Request):
             "playlists": per_playlist
         }
     }
+
+# ------------------------------------------------------------
+# Genres
+# ------------------------------------------------------------
+
+@router.get("/api/genres")
+def genres(request: Request):
+
+    result, err = get_dataset(request)
+    if err:
+        return err
+
+    dataset, _profiles = result
+
+    import math
+
+    def compute_genre_metrics(tracks):
+
+        track_count = 0
+        genre_counts = {}
+
+        multi_genre_tracks = 0
+        max_genres_on_track = 0
+        max_genre_track = None
+
+        for track in tracks:
+            track_count += 1
+
+            # Build unique genre set for this track from its artists
+            track_genres = set()
+
+            for artist in track.get("artists", []):
+                for g in artist.get("genres", []):
+                    if g:
+                        track_genres.add(g)
+
+            # Count per-track genre appearances (deduped per track)
+            for g in track_genres:
+                genre_counts[g] = genre_counts.get(g, 0) + 1
+
+            # Multi-genre track logic
+            if len(track_genres) > 1:
+                multi_genre_tracks += 1
+
+            # Genre-dense track logic
+            if len(track_genres) > max_genres_on_track:
+                max_genres_on_track = len(track_genres)
+                max_genre_track = track
+
+        if not genre_counts or track_count == 0:
+            return None
+
+        sorted_genres = sorted(
+            genre_counts.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )
+
+        unique_genres = len(sorted_genres)
+
+        # ---------------------------------
+        # Top genre
+        # ---------------------------------
+
+        top_genre, top_count = sorted_genres[0]
+        top_genre_pct = round((top_count / track_count) * 100, 1)
+
+        # ---------------------------------
+        # Dominance gap (skip ties)
+        # ---------------------------------
+
+        second_distinct_count = None
+
+        for _, count in sorted_genres[1:]:
+            if count < top_count:
+                second_distinct_count = count
+                break
+
+        if second_distinct_count is not None:
+            dominance_gap = round(
+                (top_count - second_distinct_count) / track_count * 100,
+                1
+            )
+        else:
+            dominance_gap = 0
+            
+        # ---------------------------------
+        # Diversity + Concentration
+        # ---------------------------------
+
+        entropy = 0
+        hhi = 0
+
+        for _, count in sorted_genres:
+            p = count / track_count
+            entropy += -p * math.log(p)
+            hhi += p ** 2
+
+        max_entropy = math.log(unique_genres) if unique_genres > 1 else 1
+        diversity_score = round((entropy / max_entropy) * 100, 1)
+
+        concentration_value = hhi * 100
+
+        if concentration_value < 2:
+            concentration = "Very Diverse"
+        elif concentration_value < 5:
+            concentration = "Diverse"
+        elif concentration_value < 10:
+            concentration = "Balanced"
+        elif concentration_value < 25:
+            concentration = "Leaning"
+        else:
+            concentration = "Dominated"
+
+        # ---------------------------------
+        # Additional metrics
+        # ---------------------------------
+
+        avg_tracks_per_genre = round(track_count / unique_genres, 2)
+
+        multi_genre_track_pct = round(
+            (multi_genre_tracks / track_count) * 100,
+            1
+        )
+
+        max_genre_track_name = None
+        max_genre_track_id = None
+
+        if max_genre_track:
+            max_genre_track_name = max_genre_track.get("track_name")
+            max_genre_track_id = max_genre_track.get("track_id")
+
+        return {
+            "track_count": track_count,
+            "unique_genres": unique_genres,
+
+            "diversity_score": diversity_score,
+            "concentration": concentration,
+
+            "top_genre": top_genre,
+            "top_genre_pct": top_genre_pct,
+            "dominance_gap": dominance_gap,
+
+            "avg_tracks_per_genre": avg_tracks_per_genre,
+            "multi_genre_track_pct": multi_genre_track_pct,
+
+            "max_genres_on_track": max_genres_on_track,
+            "max_genre_track_name": max_genre_track_name,
+            "max_genre_track_id": max_genre_track_id,
+
+            "top_10": [
+                {"genre": g, "count": c}
+                for g, c in sorted_genres[:10]
+            ]
+        }
+
+    # ---------------------------------
+    # Per-playlist
+    # ---------------------------------
+
+    per_playlist = {}
+    combined_tracks = []
+
+    for pid, playlist in dataset.items():
+
+        tracks = playlist.get("tracks", [])
+
+        stats = compute_genre_metrics(tracks)
+        if not stats:
+            continue
+
+        per_playlist[pid] = {
+            "playlist_name": playlist["playlist_name"],
+            **stats
+        }
+
+        combined_tracks.extend(tracks)
+
+    if not combined_tracks:
+        return {"status": "empty"}
+
+    combined_stats = compute_genre_metrics(combined_tracks)
+
+    return {
+        "status": "ready",
+        "data": {
+            "combined": combined_stats,
+            "playlists": per_playlist
+        }
+    }
+
+from web.services.fetch_data import safe_spotify_call
+
+@router.get("/api/album-frequency")
+def album_frequency(request: Request):
+
+    result, err = get_dataset(request)
+    if err:
+        return err
+    
+    sp = get_spotify_client(request)
+    if not sp:
+        return {"status": "error", "message": "Not logged in"}
+
+    dataset, _profiles = result
+
+    import math
+
+    def compute_album_metrics(tracks):
+
+        track_count = 0
+        counts = {}
+        album_name_lookup = {}
+
+        for track in tracks:
+            track_count += 1
+
+            album = track.get("album") or {}
+            album_id = album.get("album_id")
+            album_name = album.get("album_name")
+
+            if not album_id or not album_name:
+                continue
+
+            counts[album_id] = counts.get(album_id, 0) + 1
+
+            if album_id not in album_name_lookup:
+                album_name_lookup[album_id] = album_name
+
+        if not counts or track_count == 0:
+            return None
+
+        sorted_albums = sorted(counts.items(), key=lambda x: x[1], reverse=True)
+        unique_albums = len(sorted_albums)
+
+        top_album_id, top_count = sorted_albums[0]
+        top_album_name = album_name_lookup[top_album_id]
+        dominance_pct = round((top_count / track_count) * 100, 1)
+
+        albums_1x = len([c for _, c in sorted_albums if c == 1])
+        unique_appearance_pct = round((albums_1x / unique_albums) * 100, 1)
+
+        multi_album_count = len([c for _, c in sorted_albums if c > 1])
+        multi_album_pct = round((multi_album_count / unique_albums) * 100, 1)
+
+        top10_tracks = sum(c for _, c in sorted_albums[:10])
+        top10_album_share = round((top10_tracks / track_count) * 100, 1)
+
+        entropy = 0
+        hhi = 0
+        for _, c in sorted_albums:
+            p = c / track_count
+            entropy += -p * math.log(p)
+            hhi += p ** 2
+
+        max_entropy = math.log(unique_albums) if unique_albums > 1 else 1
+        diversity_score = round((entropy / max_entropy) * 100, 1)
+
+        concentration_value = hhi * 100
+        if concentration_value < 2:
+            concentration = "Very Diverse"
+        elif concentration_value < 5:
+            concentration = "Diverse"
+        elif concentration_value < 10:
+            concentration = "Balanced"
+        elif concentration_value < 25:
+            concentration = "Leaning"
+        else:
+            concentration = "Dominated"
+
+        avg_tracks_per_album = round(track_count / unique_albums, 2)
+
+        return {
+            "track_count": track_count,
+            "unique_albums": unique_albums,
+
+            "diversity_score": diversity_score,
+            "concentration": concentration,
+
+            "multi_album_pct": multi_album_pct,
+            "top10_album_share": top10_album_share,
+
+            "top_album_name": top_album_name,
+            "top_album_id": top_album_id,
+            "dominance_pct": dominance_pct,
+
+            "unique_appearance_pct": unique_appearance_pct,
+            "avg_tracks_per_album": avg_tracks_per_album,
+
+            "top_10": [
+                {
+                    "album_id": album_id,
+                    "album_name": album_name_lookup[album_id],
+                    "count": c,
+                    "image_url": None
+                }
+                for album_id, c in sorted_albums[:10]
+            ]
+        }
+
+    combined_tracks = []
+    per_playlist = {}
+
+    for pid, playlist in dataset.items():
+        tracks = playlist.get("tracks", [])
+        stats = compute_album_metrics(tracks)
+        if not stats:
+            continue
+
+        per_playlist[pid] = {"playlist_name": playlist["playlist_name"], **stats}
+        combined_tracks.extend(tracks)
+
+    if not combined_tracks:
+        return {"status": "empty"}
+
+    combined_stats = compute_album_metrics(combined_tracks)
+
+    return {"status": "ready", "data": {"combined": combined_stats, "playlists": per_playlist}}
+
+@router.post("/api/album-images")
+async def album_images(request: Request):
+
+    body = await request.json()
+    ids = body.get("ids", [])
+
+    if not ids:
+        return {"albums": []}
+
+    sp = get_spotify_client(request)
+    if not sp:
+        return {"albums": []}
+
+    results = safe_spotify_call(sp.albums, ids)
+
+    out = []
+
+    for album in results.get("albums", []):
+        if not album:
+            continue
+
+        images = album.get("images") or []
+
+        out.append({
+            "album_id": album["id"],
+            "image_url": images[0]["url"] if images else None
+        })
+
+    return {"albums": out}

@@ -33,7 +33,10 @@ tracks.json
 
 # Data exports
 data/raw/
+dump_project.py
+PROJECT_ARCHITECTURE_DUMP.txt
 
 # My personal key
 my_secrets.py
 .env
+CSS_DUMP.txt

@@ -1,0 +1,33 @@
+/* =========================================
+   DASHBOARD GRID
+========================================= */
+
+.playlist-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 180px);
+    gap: 34px;
+    justify-content: center;
+}
+
+@media (max-width: 1200px) {
+    .playlist-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (max-width: 900px) {
+    .playlist-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+.hidden-card {
+    opacity: 0.4;
+}
+
+/* =========================================
+   DASHBOARD HEADER
+========================================= */
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+}

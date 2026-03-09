@@ -6,7 +6,8 @@ from web.state import PLAYLIST_DATA_CACHE
 router = APIRouter()
 
 def get_active_dataset_and_profiles(request: Request, sp):
-    user_id = sp.current_user()["id"]
+    from web.spotify_auth import get_user_id
+    user_id = get_user_id(request)
     selected_ids = request.session.get("selected_playlists", [])
 
     if not selected_ids:
@@ -38,22 +39,12 @@ def get_library(request: Request):
     dataset, _profiles, err = get_active_dataset_and_profiles(request, sp)
 
     if err:
-        if err["status"] == "empty":
-            return {"status": "empty"}
+        missing = err.get("missing", [])
 
-        user_id = sp.current_user()["id"]
-        build_state = USER_BUILD_STATE.get(user_id, {})
-
-        if build_state.get("status") == "building":
-            return {
-                "status": "building",
-                "missing": err.get("missing", [])
-            }
-
-        # Build not running, cache missing
+        # If anything missing, it is not ready — period
         return {
-            "status": "not_built",
-            "missing": err.get("missing", [])
+            "status": "building",
+            "missing": missing
         }
 
     playlists_output = []

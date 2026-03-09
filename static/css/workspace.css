@@ -1,0 +1,1428 @@
+/* =========================================
+   WORKSPACE — LAYOUT
+========================================= */
+
+.workspace-page .ws-layout {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 40px;
+    overflow: visible;
+}
+
+.ws-sidebar {
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    max-height: calc(100vh - 160px);
+    overflow: hidden;
+    padding-top: 0;
+}
+
+.ws-main {
+    min-width: 0;
+    min-height: 0;
+    overflow: visible;
+    padding-top: 6px;
+}
+
+/* =========================================
+   WORKSPACE — SIDEBAR MODULES
+========================================= */
+
+.ws-controls-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ws-controls-vertical .ws-metric-btn:first-child {
+    margin-top: 6px;
+}
+
+.ws-metric-btn {
+    padding: 11px 14px;
+    background: rgba(255,255,255,0.015);
+    border: 1px solid rgba(255,255,255,0.07);
+
+    color: rgba(229,231,235,0.70);
+    font-weight: 650;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+
+    transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease,
+        background 0.15s ease;
+}
+
+.ws-metric-btn:hover {
+    transform: translateY(-2px);
+    border-color: rgba(29,185,84,0.70);
+    box-shadow: 0 0 10px rgba(29,185,84,0.35);
+    color: rgba(29,185,84,0.95);
+    background: rgba(29,185,84,0.06);
+}
+
+.ws-metric-btn.active-metric {
+    border-color: rgba(29,185,84,0.95);
+    color: rgba(29,185,84,1);
+    background: rgba(29,185,84,0.08);
+    box-shadow: 0 0 14px rgba(29,185,84,0.45);
+}
+
+/* =========================================
+   WORKSPACE — ANALYTICS PANEL (MAIN)
+========================================= */
+
+.ws-analytics {
+    position: relative;
+    padding: 18px 20px;
+    background: var(--surface-bg-strong);
+    border: 1px solid var(--surface-border);
+}
+
+.ws-analytics + .ws-analytics { margin-top: 16px; }
+
+.ws-hero-number {
+    font-size: 54px;
+    font-weight: 750;
+    letter-spacing: -1px;
+    line-height: 1;
+    margin-top: 4px;
+}
+
+.ws-subtle {
+    opacity: 0.65;
+    font-size: 14px;
+    margin-top: 6px;
+}
+
+.ws-chart-wrap {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+/* =========================================
+   WORKSPACE — INSIGHTS
+========================================= */
+
+.ws-insight-grid {
+    margin-top: 18px;
+    display: grid;
+    gap: 10px;
+}
+
+.ws-insight-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.05);
+
+    font-size: 13px;
+}
+
+.ws-insight-row:hover {
+    border-color: rgba(29,185,84,0.35);
+    background: rgba(29,185,84,0.04);
+}
+
+.ws-insight-label {
+    font-weight: 650;
+    color: rgba(156,163,175,0.95);
+    font-size: 13px;
+    letter-spacing: 0.3px;
+}
+
+.ws-insight-value {
+    font-weight: 600;
+    text-align: right;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.ws-insight-value a {
+    color: var(--accent-green);
+    text-decoration: none;
+    display: inline-block;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ws-insight-value a:hover {
+    text-decoration: underline;
+}
+
+/* =========================================
+   HEADER SPACING / PAGE HEIGHT
+========================================= */
+
+.workspace-header {
+    margin-bottom: 16px;
+}
+
+.workspace-page .container {
+    height: calc(100vh - 72px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* =========================================
+   AVG LENGTH — FULL WIDTH CHART
+========================================= */
+
+.ws-avg-full {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.ws-chart-overlay-wrap {
+    min-height: 420px;
+    padding: 28px 32px 48px 32px;
+
+    background: var(--surface-bg-soft);
+    border: 1px solid var(--surface-border);
+}
+
+/* overlay panel */
+
+.ws-chart-overlay {
+    position: absolute;
+    top: 0;
+    right: 40px;
+
+    width: 340px;
+    padding: 26px 28px;
+
+    background: rgba(12, 18, 30, 0.92);
+    backdrop-filter: blur(8px);
+
+    border: 1px solid rgba(255,255,255,0.08);
+
+    font-size: 15px;
+    z-index: 20;
+
+    cursor: grab;
+    user-select: none;
+}
+
+.ws-chart-overlay.dragging {
+    cursor: grabbing;
+}
+
+.ws-overlay-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 14px;
+}
+.ws-overlay-row:last-child { margin-bottom: 0; }
+
+.ws-overlay-row span:first-child {
+    color: #ffffff;
+    font-weight: 500;
+}
+
+.ws-overlay-value {
+    display: flex;
+    gap: 6px;
+    align-items: baseline;
+    max-width: 65%;
+}
+
+.ws-overlay-title {
+    color: var(--accent-green);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 130px;
+    font-weight: 500;
+}
+
+.ws-overlay-title:hover {
+    text-decoration: underline;
+}
+
+.ws-overlay-time {
+    font-size: 14px;
+    color: #ffffff;
+    flex-shrink: 0;
+}
+
+.ws-panel-help {
+    position: absolute;
+
+    top: 6px;
+    left: 0px;
+
+    margin: 0;
+
+    z-index: 5;
+}
+
+/* =========================================
+   SIDE PANEL
+========================================= */
+
+.ws-side-panel {
+    width: 100%;
+    padding: 16px 18px;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.ws-side-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 14px;
+    font-size: 13px;
+}
+.ws-side-row:last-child { margin-bottom: 0; }
+
+.ws-side-label { opacity: 0.6; }
+
+.ws-side-value {
+    text-align: right;
+    max-width: 65%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ws-side-value a {
+    color: var(--accent-green);
+    text-decoration: none;
+}
+.ws-side-value a:hover { text-decoration: underline; }
+
+/* =========================================
+   AVG HEADER (SINGLE AUTHORITATIVE VERSION)
+========================================= */
+
+.ws-avg-header {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 18px;
+    padding-right: 380px;
+}
+
+.ws-avg-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.ws-avg-inline-number {
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.ws-avg-selection {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+    line-height: 1.2;
+}
+
+.ws-selection-name {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.ws-selection-meta {
+    color: var(--accent-green);
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.ws-selection-link {
+    text-decoration: none;
+}
+.ws-selection-link:hover {
+    text-decoration: underline;
+}
+
+/* =========================================
+   LAYER FADE SYSTEM
+========================================= */
+
+.ws-analytics-inner {
+    position: relative;
+}
+
+.ws-layer {
+    position: absolute;
+    inset: 0;
+    transition: opacity 0.18s ease;
+}
+
+.ws-layer.new { opacity: 0; }
+.ws-layer.new.show { opacity: 1; }
+.ws-layer.old.fade { opacity: 0; }
+
+/* =========================================
+   GLOBAL TOOLTIP SYSTEM
+========================================= */
+
+.ws-help {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 20px;
+    height: 20px;
+
+    margin-left: 6px;
+
+    font-size: 12px;
+    font-weight: 600;
+
+    color: rgba(255,255,255,0.65);
+    cursor: help;
+
+    border: none;
+    border-radius: 0;
+
+    transition: color 0.15s ease, background 0.15s ease;
+}
+
+.ws-help:hover {
+    color: var(--accent-green);
+    background: rgba(29,185,84,0.12);
+}
+
+.ws-tooltip {
+    position: fixed;
+    max-width: 260px;
+
+    padding: 12px 14px;
+
+    background: rgba(12,18,30,0.95);
+    backdrop-filter: blur(6px);
+
+    border: 1px solid rgba(255,255,255,0.08);
+
+    font-size: 13px;
+    line-height: 1.4;
+    color: #ffffff;
+
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(6px);
+
+    transition: opacity 0.15s ease, transform 0.15s ease;
+
+    z-index: 9999;
+    white-space: pre-line;
+}
+
+.ws-tooltip.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+/* =========================================
+   ARTIST FREQUENCY
+========================================= */
+
+.ws-artist-layout {
+    display: grid;
+    grid-template-columns: 340px minmax(0, 1fr);
+    gap: 60px;
+    align-items: start;
+}
+
+.ws-artist-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.ws-artist-card {
+    padding: 16px 20px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ws-artist-label {
+    font-size: 12px;
+    opacity: 0.6;
+    letter-spacing: 0.4px;
+}
+
+.ws-artist-value {
+    font-size: 14px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    display: flex;
+    align-items: center;
+    line-height: 1;
+    gap: 6px;
+    min-width: 0;
+}
+
+.ws-artist-value a {
+    flex: 1;
+    line-height: 1;
+    color: var(--accent-green);
+    text-decoration: none;
+
+    display: inline-block;
+    max-width: 100%;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ws-artist-value a:hover {
+    text-decoration: underline;
+}
+
+.ws-artist-header-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    margin-top: -5px;
+}
+
+.ws-artist-value span {
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.ws-artist-selection-left {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+
+/* swap button */
+
+.ws-swap-btn {
+    margin-left: auto;
+    flex: 0 0 auto;
+
+    padding: 6px 14px;
+    font-size: 12px;
+
+    background: transparent;
+    border: 1px solid var(--accent-green);
+    color: var(--accent-green);
+
+    font-weight: 600;
+    letter-spacing: 0.5px;
+
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.ws-swap-btn:hover {
+    background: rgba(29,185,84,0.12);
+    box-shadow: 0 0 10px rgba(29,185,84,0.35);
+}
+
+/* chart container + animation */
+
+.ws-artist-chart {
+    position: relative;
+    height: 420px;
+
+    transform-origin: top center;
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.ws-artist-chart canvas {
+    position: relative;
+    z-index: 1;
+}
+
+.ws-artist-chart.ws-shrinking {
+    opacity: 0;
+    transform: scale(0.965);
+}
+
+/* prevent overflow text issues */
+
+.ws-artist-card a,
+.ws-artist-value,
+.ws-artist-active-name {
+    display: inline-block;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* =========================================
+   ACTIVE ARTIST (UNDER CHART)
+========================================= */
+
+.ws-artist-right {
+    display: flex;
+    flex-direction: column;
+}
+
+.ws-artist-active {
+    margin-top: 0;
+    transition: opacity 180ms ease;
+}
+
+.ws-artist-active.ws-fading {
+    opacity: 0;
+}
+
+.ws-artist-active-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.ws-artist-active-img {
+    width: 56px;
+    height: 56px;
+    overflow: hidden;
+}
+
+.ws-artist-active-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.ws-artist-active-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ws-artist-active-name {
+    font-size: 20px;
+    font-weight: 750;
+    letter-spacing: 0.6px;
+
+    color: var(--artistColor, rgba(12,18,30,0.95));
+
+    text-decoration: none;
+    transition: color 0.25s ease;
+}
+
+.ws-artist-active-name:hover {
+    text-decoration: underline;
+}
+
+.ws-artist-active-meta {
+    font-size: 13px;
+    opacity: 0.7;
+    letter-spacing: 0.3px;
+}
+
+/* =========================================
+   RELEASE YEARS (FINAL AUTHORITATIVE VERSION)
+========================================= */
+
+.ws-release-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 28px;
+}
+
+.ws-release-left {
+    min-width: 0;
+}
+
+.ws-release-right {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    height: 100%;
+}
+
+.ws-release-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.ws-release-active {
+    margin-top: auto;
+}
+
+.ws-release-chart {
+    position: relative;
+    height: 500px;
+    padding: 16px;
+
+    background: var(--surface-bg-soft);
+    border: 1px solid var(--surface-border);
+}
+
+.ws-release-chart canvas {
+    display: block;
+}
+
+.ws-release-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ws-release-active-title {
+    font-size: 20px;
+    font-weight: 750;
+}
+
+.ws-release-active-meta {
+    font-size: 13px;
+    color: #ffffff;
+    opacity: 1;
+}
+
+.ws-release-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    align-items: center;
+}
+
+.ws-release-controls .ws-swap-btn:nth-child(1) { justify-self: start; }
+.ws-release-controls .ws-swap-btn:nth-child(2) { justify-self: center; }
+.ws-release-controls .ws-swap-btn:nth-child(3) { justify-self: end; }
+
+.ws-release-controls {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+}
+
+.ws-artist-card {
+    position: relative;
+}
+
+.ws-artist-card .ws-genres-card .ws-album-card .ws-panel-help {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    left: auto;      /* important if an old rule set left */
+    margin: 0;       /* override .ws-help margin-left */
+    z-index: 5;
+}
+
+.ws-release-controls .ws-swap-btn {
+    margin-left: 0;
+}
+
+.ws-genres-card {
+    position: relative;
+}
+
+ .ws-panel-help {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    left: auto;
+    margin: 0;
+    z-index: 5;
+}
+
+/* =========================================
+   DECADES
+========================================= */
+
+.ws-decade-hero {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 40px;
+
+    margin: 24px 0 32px 0;
+    padding: 22px 28px;
+
+    background: var(--surface-bg-soft);
+    border: 1px solid var(--surface-border);
+}
+
+.ws-decade-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ws-decade-label {
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    opacity: 0.6;
+}
+
+.ws-decade-value {
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.ws-decade-chart {
+    position: relative;
+    height: 420px;
+
+    padding: 28px 32px 36px 32px;
+
+    background: var(--surface-bg-soft);
+    border: 1px solid var(--surface-border);
+}
+
+.ws-decade-active {
+    margin-top: 18px;
+    transition: opacity 180ms ease;
+}
+
+.ws-decade-active-title {
+    font-size: 20px;
+    font-weight: 750;
+    letter-spacing: 0.5px;
+}
+
+.ws-decade-active-meta {
+    font-size: 13px;
+    opacity: 0.7;
+    margin-top: 4px;
+}
+
+/* =========================================
+   OUTPUT CONTAINER
+========================================= */
+
+#wsAnalyticsOutput {
+    transition: none;
+}
+
+/* =========================================
+   METRIC FADE SYSTEM
+========================================= */
+
+.ws-metric-fading {
+    opacity: 0;
+    transition: opacity 180ms ease;
+}
+
+/* =========================================
+   genres ACTIVE ICON
+========================================= */
+
+.ws-genres-active-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--accent-green);
+    box-shadow: 0 0 12px rgba(0,0,0,0.35);
+}
+
+/* =========================================
+   genresS (CLONED FROM ARTIST SYSTEM)
+========================================= */
+
+.ws-genres-layout {
+    display: grid;
+    grid-template-columns: 340px minmax(0, 1fr);
+    gap: 60px;
+    align-items: start;
+}
+
+.ws-genres-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.ws-genres-card {
+    padding: 16px 20px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ws-genres-label {
+    font-size: 12px;
+    opacity: 0.6;
+    letter-spacing: 0.4px;
+}
+
+.ws-genres-value {
+    font-size: 14px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    display: flex;
+    align-items: center;
+    line-height: 1;
+    gap: 6px;
+    min-width: 0;
+}
+
+/* genres LINKS — NO UNDERLINE */
+
+.ws-genres-value a {
+    flex: 1;
+    line-height: 1;
+    color: var(--accent-green);
+    text-decoration: none;
+
+    display: inline-block;
+    max-width: 100%;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ws-genres-value a:hover {
+    text-decoration: none;   /* explicitly disabled */
+}
+
+.ws-genres-header-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    margin-top: -5px;
+}
+
+.ws-genres-selection-left {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+
+.ws-genres-header-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.ws-genres-header-row .ws-swap-btn {
+    margin-left: auto;
+}
+
+/* chart container */
+
+.ws-genres-chart {
+    position: relative;
+    height: 420px;
+
+    transform-origin: top center;
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.ws-genres-chart canvas {
+    position: relative;
+    z-index: 1;
+}
+
+.ws-genres-chart.ws-shrinking {
+    opacity: 0;
+    transform: scale(0.965);
+}
+
+/* active genres block (mirrors artist) */
+
+.ws-genres-right {
+    display: flex;
+    flex-direction: column;
+}
+
+.ws-genres-active {
+    margin-top: 0;
+    transition: opacity 180ms ease;
+}
+
+.ws-genres-active.ws-fading {
+    opacity: 0;
+}
+
+.ws-genres-active-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.ws-genres-active-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--accent-green);
+    box-shadow: 0 0 12px rgba(0,0,0,0.35);
+}
+
+.ws-genres-active-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ws-genres-active-name {
+    font-size: 20px;
+    font-weight: 750;
+    letter-spacing: 0.6px;
+
+    text-decoration: none;
+}
+
+.ws-genres-active-meta {
+    font-size: 13px;
+    opacity: 0.7;
+    letter-spacing: 0.3px;
+}
+
+.ws-genre-active-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.ws-genres-active-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.ws-genres-full .ws-avg-header {
+    padding-right: 0;
+}
+
+.ws-artist-full .ws-avg-header {
+    padding-right: 0;
+}
+
+.ws-album-full .ws-avg-header {
+    padding-right: 0;
+}
+
+/* =========================================
+   WORKSPACE — PLAYLIST LIST
+========================================= */
+
+#wsPlaylistSection {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+
+
+    direction: rtl;
+
+    padding: 8px 10px;
+
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.20) transparent;
+
+    scrollbar-gutter: stable;          /* reserve scrollbar space so cards don’t get clipped */
+    padding-right: 6px;                /* tiny safety gap so borders never sit under the bar */
+    box-sizing: border-box;
+}
+
+#wsPlaylistSection > * {
+    direction: ltr;
+}
+
+/* scrollbar */
+
+#wsPlaylistSection::-webkit-scrollbar {
+    width: 8px;
+}
+
+#wsPlaylistSection::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#wsPlaylistSection::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.16);
+    border-radius: 10px;
+}
+
+#wsPlaylistSection::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.26);
+}
+
+/* playlist list container */
+
+.ws-sidebar .playlist-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* playlist card */
+
+.ws-sidebar .playlist-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+
+    width: 100%;
+    padding: 10px 12px;
+
+    background: rgba(255,255,255,0.015);
+    border: 1px solid rgba(255,255,255,0.06);
+
+    box-sizing: border-box;
+}
+
+.ws-sidebar .playlist-cover {
+    width: 58px;
+    height: 58px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* text area */
+
+.ws-sidebar .playlist-info {
+    flex: 1;
+    min-width: 0;
+}
+
+/* title */
+
+.ws-sidebar .playlist-name {
+    font-size: 13px;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* track count */
+
+.ws-sidebar .playlist-count {
+    font-size: 10px;
+}
+
+/* active card */
+
+.ws-sidebar .playlist-card.ws-active {
+    border-color: rgba(29,185,84,0.65);
+    box-shadow: 0 0 10px rgba(29,185,84,0.25);
+}
+
+.ws-sidebar .playlist-card.ws-summary {
+    border-color: rgba(29,185,84,0.35);
+    background: rgba(29,185,84,0.05);
+}
+
+/* prevent hover trace animation */
+
+.ws-sidebar .playlist-card.ws-active:hover::before,
+.ws-sidebar .playlist-card.ws-active:hover::after {
+    animation: none !important;
+}
+
+.ws-sidebar .playlist-card.ws-active:hover {
+    border-color: rgba(29,185,84,0.65);
+    box-shadow: 0 0 10px rgba(29,185,84,0.25);
+}
+
+.ws-sidebar .playlist-row-content {
+    display: grid;
+    grid-template-columns: 58px 1fr;
+    align-items: center;
+    column-gap: 12px;
+}
+
+#wsPlaylistSection > * {
+    direction: ltr;
+}
+
+.ws-sidebar .playlist-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+}
+
+/* =========================================
+   WORKSPACE SIDEBAR — PLAYLIST CARD (FINAL)
+   - no trace hover
+   - image left, text right
+========================================= */
+
+.ws-sidebar .playlist-card {
+    position: relative;              /* keep normal stacking */
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    padding: 10px 12px;
+    width: 100%;
+    box-sizing: border-box;
+
+    background: rgba(255,255,255,0.015);
+    border: 1px solid rgba(255,255,255,0.06);
+
+    /* make sure nothing is centering from base rules */
+    flex-direction: row;
+}
+
+.ws-sidebar .playlist-card::before,
+.ws-sidebar .playlist-card::after {
+    content: none !important;        /* kills the trace system from components.css */
+}
+
+.ws-sidebar .playlist-card:hover {
+    transform: none;                  /* in case anything else tries to lift */
+    border-color: rgba(29,185,84,0.30);
+    background: rgba(255,255,255,0.025);
+    box-shadow: none;
+}
+
+/* cover */
+.ws-sidebar .playlist-cover {
+    width: 58px;
+    height: 58px;
+    flex: 0 0 58px;
+    margin: 0;                        /* kill dashboard top margin */
+    overflow: hidden;
+}
+
+.ws-sidebar .playlist-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* text block */
+.ws-sidebar .playlist-info {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+}
+
+.ws-sidebar .playlist-name {
+    width: auto;                      /* overrides dashboard fixed 170px */
+    font-size: 13px;
+    line-height: 1.1;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ws-sidebar .playlist-count {
+    font-size: 10px;
+    line-height: 1;
+}
+
+/* active/summary states (keep your existing look, no trace) */
+.ws-sidebar .playlist-card.ws-active:hover,
+.ws-sidebar .playlist-card.ws-summary:hover {
+    transform: none;
+}
+
+#wsPlaylistSection .playlist-card {
+    box-sizing: border-box;
+    width: calc(100% - 10px);
+}
+
+/* =========================================
+   ALBUM FREQUENCY
+========================================= */
+
+.ws-album-header-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    margin-top: -1px;
+}
+
+.ws-album-selection-left {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+
+.ws-album-layout {
+    display: grid;
+    grid-template-columns: 340px minmax(0, 1fr);
+    gap: 60px;
+    align-items: start;
+}
+
+.ws-album-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.ws-album-card {
+    padding: 16px 20px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ws-album-label {
+    font-size: 12px;
+    opacity: 0.6;
+    letter-spacing: 0.4px;
+}
+
+.ws-album-value {
+    font-size: 14px;
+    font-weight: 600;
+
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.ws-album-value a {
+    color: var(--accent-green);
+    text-decoration: none;
+
+    display: inline-block;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ws-album-value a:hover {
+    text-decoration: underline;
+}
+
+/* right side */
+
+.ws-album-right {
+    display: flex;
+    flex-direction: column;
+}
+
+/* chart */
+
+.ws-album-chart {
+    padding-bottom: 9px;
+    position: relative;
+    height: 420px;
+
+    transform-origin: top center;
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.ws-album-chart canvas {
+    position: relative;
+    z-index: 1;
+}
+
+/* active album card */
+
+.ws-album-active {
+    margin-top: 0;
+    transition: opacity 180ms ease;
+}
+
+.ws-album-active.ws-fading {
+    opacity: 0;
+}
+
+.ws-album-active-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* album cover */
+
+.ws-album-active-img {
+    width: 56px;
+    height: 56px;
+    overflow: hidden;
+}
+
+.ws-album-active-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* text */
+
+.ws-album-active-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ws-album-active-name {
+    font-size: 20px;
+    font-weight: 750;
+    letter-spacing: 0.6px;
+
+    color: var(--albumColor, #ffffff);
+
+    text-decoration: none;
+    transition: color 0.25s ease;
+}
+
+.ws-album-active-name:hover {
+    text-decoration: underline;
+}
+
+.ws-album-active-meta {
+    font-size: 13px;
+    opacity: 0.7;
+    letter-spacing: 0.3px;
+}
+
+.ws-album-active-img {
+    width: 64px;
+    height: 64px;
+    border-radius: 6px;
+    overflow: hidden;
+    transition: opacity 220ms ease;
+}
