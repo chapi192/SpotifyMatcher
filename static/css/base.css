@@ -9,6 +9,10 @@ body {
     color: var(--text-main);
 }
 
+/* =========================================================
+   GLOBAL VISUAL BACKDROP
+   ========================================================= */
+
 body::before {
     content: "";
     position: fixed;
@@ -20,6 +24,11 @@ body::before {
         transparent 60%
     );
 }
+
+
+/* =========================================
+   HEADINGS
+========================================= */
 
 h2 {
     font-weight: 600;
@@ -34,6 +43,10 @@ h2 {
     padding-bottom: 8px;
 }
 
+/* =========================================================
+   H2 DECORATION
+   ========================================================= */
+
 h2::after {
     content: "";
     position: absolute;
@@ -43,6 +56,11 @@ h2::after {
     height: 3px;
     background: var(--accent-green);
 }
+
+
+/* =========================================
+   GENERIC ELEMENTS
+========================================= */
 
 hr {
     border: none;
@@ -55,6 +73,7 @@ hr {
     padding: 50px 40px;
     box-sizing: border-box;
 }
+
 
 /* =========================================
    NAVBAR
@@ -73,6 +92,11 @@ hr {
     align-items: center;
 }
 
+
+/* =========================================================
+   NAV LINK SYSTEM
+   ========================================================= */
+
 .nav-links a {
     color: var(--text-main);
     text-decoration: none;
@@ -85,12 +109,22 @@ hr {
     color: var(--accent-green);
 }
 
+/* =========================================================
+   ⚠️ INTERACTION OVERRIDE PRESERVED
+   Used to disable navigation links conditionally
+   ========================================================= */
+
 .nav-disabled {
     pointer-events: none;
     opacity: 0.3;
 }
 
-/* global progress bar (dashboard/workspace build) */
+
+/* =========================================
+   GLOBAL PROGRESS BAR
+   (dashboard / workspace build indicator)
+========================================= */
+
 .global-progress {
     position: absolute;
     left: 0;

@@ -2,15 +2,14 @@
    UNIVERSAL BUTTON SYSTEM
 ========================================= */
 
-.btn {
-    font-size: 11px;
-    letter-spacing: 1px;
-    padding: 6px 12px;
+/* =========================================================
+   SHARED BUTTON BASE
+   ========================================================= */
 
+.btn,
+.hide-bottom-btn {
     background: transparent;
-    border: 1px solid var(--accent-green-soft);
-    color: var(--accent-green);
-
+    border: 1px solid;
     cursor: pointer;
 
     transition:
@@ -18,42 +17,62 @@
         box-shadow 0.15s ease,
         border-color 0.15s ease,
         color 0.15s ease;
+}
+
+/* =========================================================
+   INDIVIDUAL BUTTON RULES (PRESERVED)
+   ========================================================= */
+
+.btn {
+    font-size: 11px;
+    letter-spacing: 1px;
+    padding: 6px 12px;
 }
 
 .hide-bottom-btn {
     font-size: 9px;
     letter-spacing: 1px;
     padding: 3px 8px;
-
-    background: transparent;
-    border: 1px solid;
-
-    cursor: pointer;
-
-    transition:
-        transform 0.15s ease,
-        box-shadow 0.15s ease,
-        border-color 0.15s ease,
-        color 0.15s ease;
 }
+
+/* =========================================================
+   BUTTON HOVER BEHAVIOR
+   ========================================================= */
 
 .btn:hover,
 .hide-bottom-btn:hover {
     transform: translateY(-2px);
 }
 
+/* =========================================================
+   DASHBOARD ACTION GROUP
+   ========================================================= */
+
 .dashboard-actions {
     display: flex;
     gap: 10px;
 }
 
-/* Green buttons */
+/* =========================================================
+   GREEN BUTTON COLOR SYSTEM
+   ========================================================= */
+
+/* =========================================================
+   ⚠️ OVERRIDE PRESERVED
+   Border + color intentionally applied separately from base
+   button system. Leaving this isolated so cascade behavior
+   remains identical to current site.
+   ========================================================= */
 
 .btn,
 .hide-bottom-btn {
     border-color: var(--accent-green-soft);
     color: var(--accent-green);
 }
+
+/* =========================================================
+   BUTTON HOVER GLOW
+   ========================================================= */
 
 .btn:hover,
 .hide-bottom-btn:hover {

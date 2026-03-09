@@ -30,31 +30,6 @@ def logout(request: Request):
     response.delete_cookie("session")
     return response
 
-
-def get_spotify_client(request: Request):
-    token_info = request.session.get("token_info")
-
-    # print("TOKEN BEFORE REFRESH:", token_info)
-
-    if not token_info:
-        print("NO TOKEN IN SESSION")
-        return None
-
-    oauth = build_oauth()
-    token_info = refresh_if_needed(oauth, token_info)
-
-    # print("TOKEN AFTER REFRESH:", token_info)
-
-    if not token_info:
-        print("REFRESH FAILED")
-        return None
-
-    request.session["token_info"] = token_info
-
-    oauth.token_info = token_info
-    return spotipy.Spotify(auth_manager=oauth)
-
-
 @router.get("/callback")
 def callback(request: Request):
     oauth = build_oauth()
@@ -67,8 +42,8 @@ def callback(request: Request):
     request.session["token_info"] = token_info
 
     sp = spotipy.Spotify(auth_manager=oauth)
-    from web.spotify_auth import get_user_id
-    user_id = get_user_id(request)
+
+    user_id = sp.current_user()["id"]
     request.session["user_id"] = user_id
 
     return RedirectResponse("/dashboard")

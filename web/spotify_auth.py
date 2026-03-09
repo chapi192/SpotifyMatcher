@@ -44,18 +44,31 @@ def get_spotify_client(request: Request):
     token_info = request.session.get("token_info")
 
     if not token_info:
+        print("NO TOKEN IN SESSION")
         return None
 
     oauth = build_oauth()
     token_info = refresh_if_needed(oauth, token_info)
 
     if not token_info:
+        print("REFRESH FAILED")
         return None
 
     request.session["token_info"] = token_info
     oauth.token_info = token_info
-
+    
     return spotipy.Spotify(auth_manager=oauth)
 
 def get_user_id(request: Request):
-    return request.session.get("user_id")
+    user_id = request.session.get("user_id")
+
+    if user_id:
+        return user_id
+
+    sp = get_spotify_client(request)
+    if not sp:
+        return None
+
+    user_id = sp.current_user()["id"]
+    request.session["user_id"] = user_id
+    return user_id
