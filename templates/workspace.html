@@ -18,25 +18,7 @@
         <div class="ws-controls-vertical">
 
             <button class="ws-metric-btn"
-                    data-metric="avg-length"
-                    onclick="setMetric('avg-length', this)">
-                Average Length
-            </button>
-
-            <button class="ws-metric-btn"
-                    data-metric="artist-frequency"
-                    onclick="setMetric('artist-frequency', this)">
-                Artist Frequency
-            </button>
-
-            <button class="ws-metric-btn"
-                    data-metric="release-years"
-                    onclick="setMetric('release-years', this)">
-                Release Years
-            </button>
-
-            <button class="ws-metric-btn"
-                    data-metric="playlist-profile"
+                    data-metric="genres"
                     onclick="setMetric('genres', this)">
                 Genres
             </button>
@@ -44,7 +26,32 @@
             <button class="ws-metric-btn"
                     data-metric="album-frequency"
                     onclick="setMetric('album-frequency', this)">
-                Album Frequency
+                Albums
+            </button>
+
+            <button class="ws-metric-btn"
+                    data-metric="artist-frequency"
+                    onclick="setMetric('artist-frequency', this)">
+                Artists
+            </button>
+
+            <button class="ws-metric-btn"
+                    data-metric="release-years"
+                    onclick="setMetric('release-years', this)">
+                Decades
+            </button>
+
+            <button class="ws-metric-btn"
+                    data-metric="avg-length"
+                    onclick="setMetric('avg-length', this)">
+                Length
+            </button>
+
+            <button id="wsRelationshipsBtn"
+                    class="ws-metric-btn"
+                    data-metric="relationships"
+                    onclick="setMetric('relationships', this)">
+                Relationships
             </button>
 
         </div>
@@ -53,7 +60,9 @@
         <hr style="margin:10px 0; opacity:0.15;">
 
         <!-- playlist scroll section -->
-        <div id="wsPlaylistSection"></div>
+        <div id="wsPlaylistSection">
+            <div class="ws-sidebar-list"></div>
+        </div>
 
     </div>
 

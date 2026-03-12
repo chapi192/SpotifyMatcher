@@ -1061,3 +1061,192 @@ async def album_images(request: Request):
         })
 
     return {"albums": out}
+
+@router.get("/api/relationships")
+def relationships(request: Request):
+
+    result, err = get_dataset(request)
+    if err:
+        return err
+
+    dataset, _profiles = result
+
+    if not dataset or len(dataset) < 2:
+        return {
+            "status": "ready",
+            "data": {
+                "playlists": [],
+                "edges": []
+            }
+        }
+
+    def jaccard(a, b):
+        union = a | b
+        if not union:
+            return 0.0
+
+        score = len(a & b) / len(union)
+
+        coverage = min(len(a), len(b)) / max(len(a), len(b))
+        return score * coverage
+
+    def build_playlist_signature(playlist):
+
+        tracks = playlist.get("tracks", [])
+
+        genre_set = set()
+        artist_set = set()
+        album_set = set()
+        decade_set = set()
+
+        genre_counts = Counter()
+        artist_counts = Counter()
+        album_counts = Counter()
+        decade_counts = Counter()
+
+        for track in tracks:
+
+            album = track.get("album") or {}
+            album_name = album.get("album_name")
+            if album_name:
+                album_set.add(album_name)
+                album_counts[album_name] += 1
+
+            release_date = album.get("release_date")
+            if release_date and len(release_date) >= 4:
+                try:
+                    decade = (int(release_date[:4]) // 10) * 10
+                    decade_str = str(decade)
+                    decade_set.add(decade_str)
+                    decade_counts[decade_str] += 1
+                except Exception:
+                    pass
+
+            for artist in track.get("artists", []):
+                artist_name = artist.get("artist_name")
+                if artist_name:
+                    artist_set.add(artist_name)
+                    artist_counts[artist_name] += 1
+
+                for genre in artist.get("genres", []):
+                    if genre:
+                        genre_set.add(genre)
+                        genre_counts[genre] += 1
+
+        dominant_genre = genre_counts.most_common(1)[0][0] if genre_counts else "-"
+        dominant_artist = artist_counts.most_common(1)[0][0] if artist_counts else "-"
+        dominant_album = album_counts.most_common(1)[0][0] if album_counts else "-"
+        dominant_decade = decade_counts.most_common(1)[0][0] if decade_counts else "-"
+
+        return {
+            "playlist_id": playlist.get("playlist_id"),
+            "playlist_name": playlist.get("playlist_name"),
+            "image": playlist.get("image"),
+            "track_count": len(tracks),
+
+            "genre_set": genre_set,
+            "artist_set": artist_set,
+            "album_set": album_set,
+            "decade_set": decade_set,
+
+            "genre_counts": genre_counts,
+            "artist_counts": artist_counts,
+            "album_counts": album_counts,
+            "decade_counts": decade_counts,
+
+            "top_genres": [name for name, _ in genre_counts.most_common(3)],
+            "top_artists": [name for name, _ in artist_counts.most_common(3)],
+            "top_albums": [name for name, _ in album_counts.most_common(2)],
+            "top_decades": [name for name, _ in decade_counts.most_common(2)],
+
+            "dominant_genre": dominant_genre,
+            "dominant_artist": dominant_artist,
+            "dominant_album": dominant_album,
+            "dominant_decade": dominant_decade,
+
+            "genre_count": len(genre_set),
+            "artist_count": len(artist_set),
+            "album_count": len(album_set),
+            "decade_count": len(decade_set),
+        }
+
+    signatures = {
+        pid: build_playlist_signature(playlist)
+        for pid, playlist in dataset.items()
+    }
+
+    playlist_cards = []
+
+    for pid, sig in signatures.items():
+        playlist_cards.append({
+            "playlist_id": sig["playlist_id"],
+            "playlist_name": sig["playlist_name"],
+            "image": sig["image"],
+            "track_count": sig["track_count"],
+            "dominant_genre": sig["dominant_genre"],
+            "dominant_artist": sig["dominant_artist"],
+            "dominant_album": sig["dominant_album"],
+            "dominant_decade": sig["dominant_decade"],
+            "top_genres": sig["top_genres"],
+            "top_artists": sig["top_artists"],
+            "top_albums": sig["top_albums"],
+            "top_decades": sig["top_decades"],
+            "genre_count": sig["genre_count"],
+            "artist_count": sig["artist_count"],
+            "album_count": sig["album_count"],
+            "decade_count": sig["decade_count"],
+        })
+
+    edges = []
+    ids = list(signatures.keys())
+
+    for i in range(len(ids)):
+        for j in range(i + 1, len(ids)):
+            a = signatures[ids[i]]
+            b = signatures[ids[j]]
+
+            shared_genre_items = sorted(a["genre_set"] & b["genre_set"])
+            shared_artist_items = sorted(a["artist_set"] & b["artist_set"])
+            shared_album_items = sorted(a["album_set"] & b["album_set"])
+            shared_decade_items = sorted(a["decade_set"] & b["decade_set"])
+
+            genre_score = jaccard(a["genre_set"], b["genre_set"])
+            artist_score = jaccard(a["artist_set"], b["artist_set"])
+            album_score = jaccard(a["album_set"], b["album_set"])
+            decade_score = jaccard(a["decade_set"], b["decade_set"])
+
+            total_score = (
+                0.50 * genre_score +
+                0.35 * artist_score +
+                0.10 * album_score +
+                0.05 * decade_score
+            )
+
+            edges.append({
+                "source": a["playlist_id"],
+                "target": b["playlist_id"],
+
+                "score": round(total_score, 4),
+                "genre_score": round(genre_score, 4),
+                "artist_score": round(artist_score, 4),
+                "album_score": round(album_score, 4),
+                "decade_score": round(decade_score, 4),
+
+                "shared_genres": len(shared_genre_items),
+                "shared_artists": len(shared_artist_items),
+                "shared_albums": len(shared_album_items),
+                "shared_decades": len(shared_decade_items),
+
+                "genre_overlap": shared_genre_items[:3],
+                "artist_overlap": shared_artist_items[:3],
+                "album_overlap": shared_album_items[:2],
+                "decade_overlap": shared_decade_items[:2],
+            })
+
+    return {
+        "status": "ready",
+        "data": {
+            "playlists": playlist_cards,
+            "edges": edges
+        }
+    }

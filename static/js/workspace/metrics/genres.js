@@ -1,7 +1,7 @@
 import { clearChartInstance, setChartInstance } from "../state.js";
 import { escapeHtml } from "../utils.js";
 
-let currentGenreChartType = "bar";
+let currentGenreChartType = "treemap";
 let currentActiveGenreLabel = null;
 
 function truncateText(str, maxLength = 30) {
