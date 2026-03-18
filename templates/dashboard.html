@@ -121,6 +121,19 @@ async function loadPlaylists() {
     refreshNavGating();
 }
 
+async function waitForBuildCompletion() {
+
+    while (true) {
+
+        const res = await fetch("/api/build-progress");
+        const data = await res.json();
+
+        if (data.status !== "building") break;
+
+        await new Promise(r => setTimeout(r, 400));
+    }
+}
+
 function rgbToHsl(r, g, b){
 
     r /= 255;
@@ -530,7 +543,28 @@ async function sendSelectionUpdate() {
     refreshNavGating();
 }
 
-loadPlaylists();
+initDashboard();
+
+async function initDashboard() {
+
+    const res = await fetch("/api/nav-state");
+    const state = await res.json();
+
+    if (state.has_selection && !state.has_playlist_data) {
+
+        showLoader("Restoring your playlists...");
+
+        await fetch("/api/build", {
+            method: "POST"
+        });
+
+        // wait until build actually finishes
+        await waitForBuildCompletion();
+    }
+
+    await loadPlaylists();
+}
+
 </script>
 
 {% endblock %}
