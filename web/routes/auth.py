@@ -8,7 +8,7 @@ from web.state import USER_BUILD_STATE, PLAYLIST_DATA_CACHE, PLAYLIST_CACHE, BUI
 router = APIRouter()
 
 @router.get("/login")
-def login():
+def login(request: Request):
     oauth = build_oauth(request)
     return RedirectResponse(oauth.get_authorize_url())
 
