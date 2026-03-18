@@ -1,100 +1,85 @@
 {% extends "base.html" %}
 
 {% block extra_css %}
-
-<link rel="stylesheet" href="/static/css/recommendations.css">
+<link rel="stylesheet" href="{{ url_for('static', path='css/recommendations.css') }}">
 {% endblock %}
 
 {% block content %}
 
 <div class="rec-page">
 
-```
-<h2 class="rec-title">Playlist Recommendations</h2>
+    <h2 class="rec-title">Playlist Recommendations</h2>
 
-<div class="rec-layout">
+    <div class="rec-layout">
 
-    <!-- LEFT PANEL -->
-    <div class="rec-track-panel">
+        <div class="rec-track-panel">
+            <div class="rec-track-header">
+                <span id="breakdownTitle">Loading...</span>
+            </div>
 
-        <div class="rec-track-header">
-            <span id="breakdownTitle">Loading...</span>
+            <div id="trackList" class="rec-track-scroll"></div>
         </div>
 
-        <div id="trackList" class="rec-track-scroll"></div>
+        <div class="rec-analysis-panel">
 
-    </div>
+            <div class="rec-weights">
 
+                <div class="rec-weight">
+                    <label>Genre</label>
+                    <select id="genreWeight">
+                        <option value="5">Critical</option>
+                        <option value="4">High</option>
+                        <option value="3">Medium</option>
+                        <option value="1">Low</option>
+                        <option value="0">Ignore</option>
+                    </select>
+                </div>
 
-    <!-- RIGHT PANEL -->
-    <div class="rec-analysis-panel">
+                <div class="rec-weight">
+                    <label>Artist</label>
+                    <select id="artistWeight">
+                        <option value="5">Critical</option>
+                        <option value="4">High</option>
+                        <option value="3">Medium</option>
+                        <option value="1">Low</option>
+                        <option value="0">Ignore</option>
+                    </select>
+                </div>
 
-        <!-- WEIGHTS -->
-        <div class="rec-weights">
+                <div class="rec-weight">
+                    <label>Album</label>
+                    <select id="albumWeight">
+                        <option value="5">Critical</option>
+                        <option value="4">High</option>
+                        <option value="3">Medium</option>
+                        <option value="1">Low</option>
+                        <option value="0">Ignore</option>
+                    </select>
+                </div>
 
-            <div class="rec-weight">
-                <label>Genre</label>
-                <select id="genreWeight">
-                    <option value="5">Critical</option>
-                    <option value="4">High</option>
-                    <option value="3">Medium</option>
-                    <option value="1">Low</option>
-                    <option value="0">Ignore</option>
-                </select>
+                <div class="rec-weight">
+                    <label>Decade</label>
+                    <select id="decadeWeight">
+                        <option value="5">Critical</option>
+                        <option value="4">High</option>
+                        <option value="3">Medium</option>
+                        <option value="1">Low</option>
+                        <option value="0">Ignore</option>
+                    </select>
+                </div>
+
             </div>
 
-            <div class="rec-weight">
-                <label>Artist</label>
-                <select id="artistWeight">
-                    <option value="5">Critical</option>
-                    <option value="4">High</option>
-                    <option value="3">Medium</option>
-                    <option value="1">Low</option>
-                    <option value="0">Ignore</option>
-                </select>
+            <div id="analysisPanel" class="rec-analysis"></div>
+
+            <div class="rec-nav">
+                <button onclick="prevTrack()">Prev</button>
+                <button onclick="nextTrack()">Next</button>
             </div>
-
-            <div class="rec-weight">
-                <label>Album</label>
-                <select id="albumWeight">
-                    <option value="5">Critical</option>
-                    <option value="4">High</option>
-                    <option value="3">Medium</option>
-                    <option value="1">Low</option>
-                    <option value="0">Ignore</option>
-                </select>
-            </div>
-
-            <div class="rec-weight">
-                <label>Decade</label>
-                <select id="decadeWeight">
-                    <option value="5">Critical</option>
-                    <option value="4">High</option>
-                    <option value="3">Medium</option>
-                    <option value="1">Low</option>
-                    <option value="0">Ignore</option>
-                </select>
-            </div>
-
-        </div>
-
-
-        <!-- TRACK ANALYSIS -->
-        <div id="analysisPanel" class="rec-analysis"></div>
-
-
-        <!-- NAVIGATION -->
-        <div class="rec-nav">
-
-            <button onclick="prevTrack()">Prev</button>
-            <button onclick="nextTrack()">Next</button>
 
         </div>
 
     </div>
-
-</div>
-```
 
 </div>
 

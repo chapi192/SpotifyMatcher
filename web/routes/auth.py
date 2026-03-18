@@ -2,29 +2,26 @@ from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse, JSONResponse
 import spotipy
 
-from web.spotify_auth import build_oauth, get_user_id, refresh_if_needed, get_spotify_client
+from web.spotify_auth import build_oauth, get_user_id, get_spotify_client
 from web.state import USER_BUILD_STATE, PLAYLIST_DATA_CACHE, PLAYLIST_CACHE, BUILD_STATE
 
 router = APIRouter()
 
 @router.get("/login")
-def login():
-    oauth = build_oauth()
+def login(request: Request):
+    oauth = build_oauth(request)
     return RedirectResponse(oauth.get_authorize_url())
-
 
 @router.get("/logout")
 def logout(request: Request):
-
     sp = get_spotify_client(request)
     if sp:
-        from web.spotify_auth import get_user_id
         user_id = get_user_id(request)
         USER_BUILD_STATE.pop(user_id, None)
         PLAYLIST_DATA_CACHE.pop(user_id, None)
         PLAYLIST_CACHE.pop(user_id, None)
         BUILD_STATE.pop(user_id, None)
-        
+
     request.session.clear()
     response = RedirectResponse(url="/", status_code=302)
     response.delete_cookie("session")
@@ -32,7 +29,7 @@ def logout(request: Request):
 
 @router.get("/callback")
 def callback(request: Request):
-    oauth = build_oauth()
+    oauth = build_oauth(request)
     code = request.query_params.get("code")
 
     if not code:
@@ -42,7 +39,6 @@ def callback(request: Request):
     request.session["token_info"] = token_info
 
     sp = spotipy.Spotify(auth_manager=oauth)
-
     user_id = sp.current_user()["id"]
     request.session["user_id"] = user_id
 
