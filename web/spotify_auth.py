@@ -7,22 +7,21 @@ from fastapi import Request
 SCOPES = [
     "user-read-private",
     "user-read-email",
-
     "playlist-read-private",
     "playlist-read-collaborative",
-
     "user-library-read",
     "playlist-modify-private",
     "playlist-modify-public",
     "user-library-modify",
 ]
 
-
 def build_oauth(request: Request):
+    redirect_uri = os.getenv("SPOTIFY_REDIRECT_URI") or str(request.url_for("callback")).replace("http://", "https://")
+
     return SpotifyOAuth(
         client_id=os.getenv("SPOTIFY_CLIENT_ID"),
         client_secret=os.getenv("SPOTIFY_CLIENT_SECRET"),
-        redirect_uri=str(request.url_for("callback")),
+        redirect_uri=redirect_uri,
         scope=" ".join(SCOPES),
         show_dialog=True,
         cache_handler=None
@@ -44,19 +43,17 @@ def get_spotify_client(request: Request):
     token_info = request.session.get("token_info")
 
     if not token_info:
-        print("NO TOKEN IN SESSION")
         return None
 
     oauth = build_oauth(request)
     token_info = refresh_if_needed(oauth, token_info)
 
     if not token_info:
-        print("REFRESH FAILED")
         return None
 
     request.session["token_info"] = token_info
     oauth.token_info = token_info
-    
+
     return spotipy.Spotify(auth_manager=oauth)
 
 def get_user_id(request: Request):
