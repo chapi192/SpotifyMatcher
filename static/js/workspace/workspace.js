@@ -10,11 +10,31 @@ import { renderPlaylistSections, wireWorkspaceGlobals } from "./ui.js";
 import { wsChartInstance, clearChartInstance } from "./state.js";
 import { initTooltipSystem } from "./tooltip.js";
 import { renderAlbumFrequency } from "./metrics/albums.js";
+import { renderRelationships } from "./metrics/relationships.js";
 
 async function loadWorkspace() {
 
     const selectionRes = await fetch("/api/selection");
     const selection = await selectionRes.json();
+
+    const relBtn = document.getElementById("wsRelationshipsBtn");
+
+    if (relBtn) {
+
+        const multi = selection.selected_ids.length > 1;
+
+        relBtn.style.display = multi ? "" : "none";
+
+        // If we were previously in relationships but no longer valid
+        if (!multi && currentMetric === "relationships") {
+
+            const genresBtn = document.querySelector(
+                '.ws-metric-btn[data-metric="genres"]'
+            );
+
+            setMetric("genres", genresBtn);
+        }
+    }
 
     if (selection.selected_ids.length === 0) {
         setCurrentSelection("combined");
@@ -60,6 +80,14 @@ async function loadWorkspace() {
                 btn.classList.remove("active-metric");
             }
         });
+
+    const defaultBtn = document.querySelector(
+        `.ws-metric-btn[data-metric="${currentMetric}"]`
+    );
+
+    if (defaultBtn) {
+        setMetric(currentMetric, defaultBtn);
+    }
 }
 
 async function animateOutCurrentMetric() {
@@ -144,11 +172,14 @@ async function maybeRenderAnalytics() {
     await animateOutCurrentMetric();
     const payload = await payloadPromise;
 
-    const output = document.getElementById("wsAnalyticsOutput");
-
     if (!payload || payload.status !== "ready") {
         document.getElementById("wsAnalyticsOutput").innerHTML =
             `<p style="opacity:0.7;">No data available.</p>`;
+        return;
+    }
+
+    if (currentMetric === "relationships") {
+        renderRelationships(payload.data);
         return;
     }
 
@@ -180,6 +211,26 @@ async function maybeRenderAnalytics() {
     }
 }
 
+function highlightActiveMetric() {
+
+    const buttons = document.querySelectorAll(".ws-metric-btn");
+
+    buttons.forEach(btn => {
+
+        const metric = btn.getAttribute("data-metric");
+
+        if (metric === currentMetric) {
+            btn.classList.add("active");
+        } else {
+            btn.classList.remove("active");
+        }
+
+    });
+
+}
+
 wireWorkspaceGlobals(maybeRenderAnalytics);
+window.maybeRenderAnalytics = maybeRenderAnalytics;
 initTooltipSystem();
 loadWorkspace();
+highlightActiveMetric()

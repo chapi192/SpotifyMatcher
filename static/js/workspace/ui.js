@@ -1,59 +1,75 @@
 import { setCurrentSelection, setCurrentMetric, currentSelection } from "./state.js";
 
 export function renderPlaylistSections(data) {
+
+    const container = document.querySelector(".ws-sidebar-list");
+
     const coverHtml = (imageUrl) => {
         if (imageUrl) {
-            return `<div class="playlist-cover"><img src="${imageUrl}" alt="cover"></div>`;
+            return `<div class="ws-sidebar-cover"><img src="${imageUrl}" alt=""></div>`;
         }
-        return `<div class="no-cover">♪</div>`;
+        return `<div class="ws-sidebar-cover">♪</div>`;
     };
 
-    let cards = [];
+    let items = [];
 
+    // Combined option
     if (data.playlist_count > 1) {
-        cards.push(`
-            <div class="playlist-card no-animate ws-card-clickable ${
-                currentSelection === "combined" ? "ws-active" : ""
+
+        items.push(`
+            <div class="ws-sidebar-item ${
+                currentSelection === "combined" ? "active" : ""
             }"
             onclick="selectWorkspacePlaylist('combined', this)">
+
                 ${coverHtml(null)}
-                <div class="playlist-info">
-                    <div class="playlist-name">All Selected</div>
-                    <div class="playlist-count">
+
+                <div class="ws-sidebar-info">
+                    <div class="ws-sidebar-name">All Selected</div>
+                    <div class="ws-sidebar-count">
                         ${data.total_tracks} tracks • ${data.playlist_count} playlists
                     </div>
                 </div>
+
             </div>
         `);
+
     }
 
+    // Individual playlists
     data.playlists.forEach(p => {
-        cards.push(`
-            <div class="playlist-card no-animate ws-card-clickable ${
-                currentSelection === p.playlist_id ? "ws-active" : ""
+
+        items.push(`
+            <div class="ws-sidebar-item ${
+                currentSelection === p.playlist_id ? "active" : ""
             }"
             onclick="selectWorkspacePlaylist('${p.playlist_id}', this)">
+
                 ${coverHtml(p.image)}
-                <div class="playlist-info">
-                    <div class="playlist-name">${escapeHtml(p.playlist_name)}</div>
-                    <div class="playlist-count">${p.track_count} tracks</div>
+
+                <div class="ws-sidebar-info">
+                    <div class="ws-sidebar-name">${escapeHtml(p.playlist_name)}</div>
+                    <div class="ws-sidebar-count">${p.track_count} tracks</div>
                 </div>
+
             </div>
         `);
+
     });
 
-    document.getElementById("wsPlaylistSection").innerHTML = `
-        <div class="playlist-grid ws-grid-tight">
-            ${cards.join("")}
-        </div>
-    `;
+    container.innerHTML = items.join("");
 
-    // If only one playlist, auto-select it
+    // Auto select if only one playlist
     if (data.playlist_count === 1 && data.playlists[0]) {
+
         setCurrentSelection(data.playlists[0].playlist_id);
-        const firstCard = document.querySelector(".ws-card-clickable");
-        if (firstCard) firstCard.classList.add("ws-active");
+
+        const first = document.querySelector(".ws-sidebar-item");
+
+        if (first) first.classList.add("active");
+
     }
+
 }
 
 export function wireWorkspaceGlobals(maybeRenderAnalytics) {
@@ -72,16 +88,16 @@ export function wireWorkspaceGlobals(maybeRenderAnalytics) {
     window.selectWorkspacePlaylist = (pid, element) => {
 
         // 🚫 If already selected → do nothing
-        if (element && element.classList.contains("ws-active")) {
+        if (element && element.classList.contains("active")) {
             return;
         }
 
         setCurrentSelection(pid);
 
-        document.querySelectorAll(".ws-card-clickable")
-            .forEach(card => card.classList.remove("ws-active"));
+        document.querySelectorAll(".ws-sidebar-item")
+            .forEach(card => card.classList.remove("active"));
 
-        if (element) element.classList.add("ws-active");
+        if (element) element.classList.add("active");
 
         maybeRenderAnalytics();
     };

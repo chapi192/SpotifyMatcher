@@ -3,7 +3,7 @@ export let workspaceBuildVersion = null;
 export let wsChartInstance = null;
 
 export let currentMetric =
-    localStorage.getItem("wsCurrentMetric") || "avg-length";
+    localStorage.getItem("wsCurrentMetric") || "genres";
 
 export let currentSelection =
     localStorage.getItem("wsCurrentSelection") || "combined";

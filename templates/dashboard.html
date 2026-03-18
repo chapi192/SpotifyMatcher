@@ -3,28 +3,67 @@
 {% block content %}
 
 <div class="dashboard-header">
-    <h2>Your Playlists</h2>
-        <div class="dashboard-actions">
-            <!-- <button class="btn" onclick="selectAll()">
-                Select All
-            </button> -->
 
-            <button class="btn" onclick="deselectAll()">
-                Deselect All
-            </button>
+    <div class="dashboard-left">
+
+        <h2>Your Playlists</h2>
+
+        <div class="dashboard-actions">
+
+            <div class="playlist-sort-wrapper">
+
+                <button id="sortButton" class="playlist-sort-btn">
+                    Alphabetical
+                </button>
+
+                <div id="sortMenu" class="playlist-sort-menu">
+
+                    <div data-sort="alpha">Alphabetical</div>
+                    <div data-sort="count">Track Count</div>
+                    <div data-sort="color">Cover Color</div>
+
+                </div>
+
+            </div>
+
+            <input
+                type="text"
+                id="playlistSearch"
+                placeholder="Search playlists..."
+                class="playlist-search"
+            />
+
         </div>
+
+    </div>
+
+    <button class="btn" onclick="deselectAll()">
+        Deselect All
+    </button>
+
 </div>
 
 <hr style="margin:10px 0; opacity:0.2;">
 
-<div class="playlist-grid" id="playlistContainer"></div>
+<div class="playlist-grid" id="playlistContainer">
+    <div id="dashboardLoader" class="dashboard-loader">
+        <div class="loader-text" id="loaderText">Pulling playlists...</div>
+        <div class="loader-spinner"></div>
+    </div>
+</div>
 
-<hr style="margin:40px 0; opacity:0.2;">
+<div id="hiddenSection">
 
-<h3 style="opacity:0.7;">Hidden Playlists</h3>
-<div class="playlist-grid" id="hiddenContainer"></div>
+    <hr style="margin:40px 0; opacity:0.2;">
+
+    <h3 style="opacity:0.7;">Hidden Playlists</h3>
+    <div class="playlist-grid" id="hiddenContainer"></div>
+
+</div>
 
 <script>
+let searchQuery = "";
+let sortMode = "alpha";
 let hoverCooldownId = null;
 let cooldownUntilById = {};
 let selectionTimeout = null;
@@ -32,32 +71,237 @@ let hiddenSet = new Set();
 let allPlaylists = [];
 let selectedSet = new Set();
 
+function showLoader(text) {
+    const loader = document.getElementById("dashboardLoader");
+    const msg = document.getElementById("loaderText");
+
+    if (msg) msg.textContent = text;
+    if (loader) loader.style.display = "flex";
+}
+
+function hideLoader() {
+    const loader = document.getElementById("dashboardLoader");
+    if (loader) loader.style.display = "none";
+
+    const hiddenSection = document.getElementById("hiddenSection");
+    if (hiddenSection) hiddenSection.style.display = "block";
+}
+
 async function loadPlaylists() {
-    const cached = sessionStorage.getItem("cachedPlaylists");
-    if (cached) {
-        try {
-            allPlaylists = JSON.parse(cached);
-            renderPlaylists();
-        } catch (e) {}
-    }
 
-    const playlistRes = await fetch("/api/playlists");
+    showLoader("Pulling playlists...");
+
+    const [playlistRes, selectionRes] = await Promise.all([
+        fetch("/api/playlists"),
+        fetch("/api/selection")
+    ]);
+
     const playlistData = await playlistRes.json();
-
-    const selectionRes = await fetch("/api/selection");
     const selectionData = await selectionRes.json();
+
+    showLoader("Analyzing cover colors...");
+
+    allPlaylists = playlistData.playlists;
 
     selectedSet = new Set(selectionData.selected_ids || []);
     hiddenSet = new Set(selectionData.hidden_ids || []);
 
-    allPlaylists = playlistData.playlists;
     sessionStorage.setItem("cachedPlaylists", JSON.stringify(allPlaylists));
 
+    // compute hues
+    await Promise.all(
+        allPlaylists.map(p => computePlaylistHue(p))
+    );
+
+    // single render
     renderPlaylists();
 
-    // one clean nav refresh after selection is known
+    hideLoader();
+
     refreshNavGating();
 }
+
+function rgbToHsl(r, g, b){
+
+    r /= 255;
+    g /= 255;
+    b /= 255;
+
+    const max = Math.max(r,g,b);
+    const min = Math.min(r,g,b);
+    const d = max - min;
+
+    let h = 0;
+    let s = 0;
+    const l = (max + min) / 2;
+
+    if (d !== 0){
+
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+        switch(max){
+
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
+
+        }
+
+        h /= 6;
+    }
+
+    return {
+        hue: h * 360,
+        sat: s,
+        light: l
+    };
+
+}
+
+async function computePlaylistHue(playlist){
+
+    if (!playlist.image){
+        playlist.colorGroup = "gray";
+        playlist.hue = 0;
+        playlist.hueBucket = 0;
+        return;
+    }
+
+    const img = new Image();
+    img.crossOrigin = "Anonymous";
+    img.src = playlist.image;
+
+    await img.decode();
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    canvas.width = 20;
+    canvas.height = 20;
+
+    ctx.drawImage(img,0,0,20,20);
+
+    const data = ctx.getImageData(0,0,20,20).data;
+
+    let hues = [];
+    let grayPixels = 0;
+    let totalPixels = 0;
+    let lightTotal = 0;
+
+    for(let i=0;i<data.length;i+=4){
+
+        const r = data[i];
+        const g = data[i+1];
+        const b = data[i+2];
+
+        const hsl = rgbToHsl(r,g,b);
+
+        totalPixels++;
+        lightTotal += hsl.light;
+
+        if(hsl.sat < 0.15){
+            grayPixels++;
+            continue;
+        }
+
+        hues.push(hsl.hue);
+
+    }
+
+    const avgLight = lightTotal / totalPixels;
+
+    if(avgLight > 0.90){
+        playlist.colorGroup = "white";
+        playlist.hue = 0;
+        playlist.hueBucket = 0;
+        return;
+    }
+
+    if(avgLight < 0.10){
+        playlist.colorGroup = "black";
+        playlist.hue = 0;
+        playlist.hueBucket = 0;
+        return;
+    }
+
+    if(grayPixels / totalPixels > 0.70){
+        playlist.colorGroup = "gray";
+        playlist.hue = 0;
+        playlist.hueBucket = 0;
+        return;
+    }
+
+    if(hues.length === 0){
+        playlist.colorGroup = "gray";
+        playlist.hue = 0;
+        playlist.hueBucket = 0;
+        return;
+    }
+
+    const avgHue = hues.reduce((a,b)=>a+b,0) / hues.length;
+
+    let variance = 0;
+
+    for(const h of hues){
+        variance += Math.abs(h - avgHue);
+    }
+
+    variance /= hues.length;
+
+    if(variance > 80){
+        playlist.colorGroup = "noisy";
+        playlist.hue = avgHue;
+        playlist.hueBucket = 0;
+        return;
+    }
+
+    playlist.colorGroup = "color";
+    playlist.hue = avgHue;
+    playlist.hueBucket = Math.floor(avgHue / 20);
+
+}
+
+document.getElementById("playlistSearch").addEventListener("input", (e) => {
+    searchQuery = e.target.value.toLowerCase();
+    renderPlaylists();
+});
+
+const sortButton = document.getElementById("sortButton");
+const sortMenu = document.getElementById("sortMenu");
+
+sortButton.addEventListener("click", () => {
+
+    const isOpen = sortMenu.style.display === "block";
+
+    sortMenu.style.display = isOpen ? "none" : "block";
+
+});
+
+document.querySelectorAll("#sortMenu div").forEach(option => {
+
+    option.addEventListener("click", () => {
+
+        sortMode = option.dataset.sort;
+
+        sortButton.textContent = option.textContent;
+
+        sortMenu.style.display = "none";
+
+        renderPlaylists();
+
+    });
+
+});
+
+document.addEventListener("click", (e) => {
+
+    if (!sortButton.contains(e.target) && !sortMenu.contains(e.target)) {
+
+        sortMenu.style.display = "none";
+
+    }
+
+});
 
 function renderPlaylists() {
     const container = document.getElementById("playlistContainer");
@@ -66,10 +310,51 @@ function renderPlaylists() {
     container.innerHTML = "";
     hiddenContainer.innerHTML = "";
 
-    const playlists = [...allPlaylists].sort((a, b) => {
+    let playlists = [...allPlaylists];
+
+    // search filter
+    if (searchQuery) {
+        playlists = playlists.filter(p =>
+            p.name.toLowerCase().includes(searchQuery)
+        );
+    }
+
+    playlists.sort((a, b) => {
+
         if (a.name.toLowerCase() === "liked songs") return -1;
         if (b.name.toLowerCase() === "liked songs") return 1;
-        return a.name.localeCompare(b.name);
+
+        if (sortMode === "alpha") {
+            return a.name.localeCompare(b.name);
+        }
+
+        if (sortMode === "count") {
+            return b.track_count - a.track_count;
+        }
+
+        if (sortMode === "recent") {
+            return new Date(b.snapshot_id) - new Date(a.snapshot_id);
+        }
+
+        if (sortMode === "color"){
+
+            const order = {
+                white:0,
+                gray:1,
+                color:2,
+                black:3,
+                noisy:4
+            };
+
+            if (a.colorGroup !== b.colorGroup){
+                return order[a.colorGroup] - order[b.colorGroup];
+            }
+
+            return a.hueBucket - b.hueBucket;
+
+        }
+
+        return 0;
     });
 
     playlists.forEach((p, index) => {
