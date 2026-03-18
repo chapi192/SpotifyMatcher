@@ -17,7 +17,7 @@ def start_incremental_build(request: Request, user_id: str, version: int):
     if not token_info:
         return
 
-    oauth = build_oauth()
+    oauth = build_oauth(request)
     oauth.token_info = token_info
 
     sp = get_spotify_client(request)

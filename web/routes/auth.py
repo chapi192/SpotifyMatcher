@@ -9,7 +9,7 @@ router = APIRouter()
 
 @router.get("/login")
 def login():
-    oauth = build_oauth()
+    oauth = build_oauth(request)
     return RedirectResponse(oauth.get_authorize_url())
 
 
@@ -32,7 +32,7 @@ def logout(request: Request):
 
 @router.get("/callback")
 def callback(request: Request):
-    oauth = build_oauth()
+    oauth = build_oauth(request)
     code = request.query_params.get("code")
 
     if not code:
