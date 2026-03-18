@@ -37,9 +37,13 @@
 
     </div>
 
-    <button class="btn" onclick="deselectAll()">
-        Deselect All
-    </button>
+    <div class="dashboard-actions-right">
+        <button class="btn" onclick="selectAll()">Select All</button>
+        <button class="btn" onclick="deselectAll()">Deselect All</button>
+        <button id="toggleNonUserBtn" class="btn" onclick="toggleNonUserPlaylists()">
+            Only My Playlists
+        </button>
+    </div>
 
 </div>
 
@@ -56,9 +60,31 @@
 
     <hr style="margin:40px 0; opacity:0.2;">
 
-    <h3 style="opacity:0.7;">Hidden Playlists</h3>
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+        <h3 style="opacity:0.7;">Hidden Playlists</h3>
+
+        <div style="display:flex; gap:8px;">
+            <button class="btn btn-secondary" onclick="unhideNonUserPlaylists()">Unhide Non-User</button>
+            <button class="btn btn-secondary" onclick="unhideAll()">Unhide All</button>
+        </div>
+    </div>
+
     <div class="playlist-grid" id="hiddenContainer"></div>
 
+</div>
+
+<div id="selectAllModal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-title">Large Selection</div>
+        <div class="modal-text">
+            This selection exceeds 3,000 songs and may take a while to load.<br><br>
+            Consider hiding some playlists first.
+        </div>
+        <div class="modal-actions">
+            <button class="btn" onclick="confirmSelectAll()">Continue</button>
+            <button class="btn btn-secondary" onclick="closeSelectAllModal()">Cancel</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -470,6 +496,8 @@ function renderPlaylists() {
     if (!sessionStorage.getItem("dashboardAnimated")) {
         sessionStorage.setItem("dashboardAnimated", "true");
     }
+
+    updateNonUserToggleButton();
 }
 
 function deselectAll() {
@@ -480,11 +508,35 @@ function deselectAll() {
 
 function selectAll() {
 
-    const confirmed = confirm(
-        "Select all playlists?\n\nLarge libraries will take a while."
-    );
+    const totalTracks = allPlaylists.reduce((sum, p) => {
+        if (!hiddenSet.has(p.id)) {
+            return sum + (p.track_count || 0);
+        }
+        return sum;
+    }, 0);
 
-    if (!confirmed) return;
+    if (totalTracks > 3000) {
+        openSelectAllModal();
+        return;
+    }
+
+    runSelectAll();
+}
+
+function openSelectAllModal() {
+    document.getElementById("selectAllModal").classList.add("active");
+}
+
+function closeSelectAllModal() {
+    document.getElementById("selectAllModal").classList.remove("active");
+}
+
+function confirmSelectAll() {
+    closeSelectAllModal();
+    runSelectAll();
+}
+
+function runSelectAll() {
 
     selectedSet.clear();
 
@@ -493,6 +545,68 @@ function selectAll() {
             selectedSet.add(p.id);
         }
     });
+
+    renderPlaylists();
+    scheduleSelectionUpdate();
+}
+
+function hideNonUserPlaylists() {
+
+    allPlaylists.forEach(p => {
+        if (!p.is_owner) {
+            hiddenSet.add(p.id);
+            selectedSet.delete(p.id);
+        }
+    });
+
+    renderPlaylists();
+    scheduleSelectionUpdate();
+}
+
+function unhideNonUserPlaylists() {
+
+    allPlaylists.forEach(p => {
+        if (!p.is_owner) {
+            hiddenSet.delete(p.id);
+        }
+    });
+
+    renderPlaylists();
+    scheduleSelectionUpdate();
+}
+
+function toggleNonUserPlaylists() {
+
+    const anyVisibleNonUser = allPlaylists.some(p =>
+        !p.is_owner && !hiddenSet.has(p.id)
+    );
+
+    if (anyVisibleNonUser) {
+        hideNonUserPlaylists();
+    } else {
+        unhideNonUserPlaylists();
+    }
+
+    updateNonUserToggleButton();
+}
+
+function updateNonUserToggleButton() {
+
+    const btn = document.getElementById("toggleNonUserBtn");
+    if (!btn) return;
+
+    const anyVisibleNonUser = allPlaylists.some(p =>
+        !p.is_owner && !hiddenSet.has(p.id)
+    );
+
+    btn.textContent = anyVisibleNonUser
+        ? "Only My Playlists"
+        : "Show Full Library";
+}
+
+function unhideAll() {
+
+    hiddenSet.clear();
 
     renderPlaylists();
     scheduleSelectionUpdate();

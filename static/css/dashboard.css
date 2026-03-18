@@ -205,7 +205,7 @@
     padding:10px 14px;
 
     background:var(--surface-bg);
-    border:1px solid var(--surface-border);
+    border:1px solid var(--accent-green);
 
     color:var(--text-main);
 
@@ -323,4 +323,86 @@
 
     border-left:3px solid var(--accent-green);
 
+}
+
+.floating-workspace-btn {
+
+    z-index: 99;
+
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+
+    padding: 14px 18px;
+
+    background: var(--accent-green);
+    color: black;
+
+    font-weight: 600;
+    font-size: 14px;
+
+    cursor: pointer;
+
+    opacity: 0;
+    transform: translateY(10px);
+    pointer-events: none;
+
+    transition:
+        opacity 0.25s ease,
+        transform 0.25s ease;
+}
+
+.floating-workspace-btn.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+/* pop up for lots of songs with select all */
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    z-index: 9999;
+
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.modal-box {
+    background: var(--surface-bg);
+    border: 1px solid var(--surface-border);
+    padding: 20px;
+    border-radius: 12px;
+    width: 320px;
+}
+
+.modal-title {
+    font-weight: 600;
+    margin-bottom: 10px;
+    font-size: 28px;
+}
+
+.modal-text {
+    font-size: 18px;
+    opacity: 0.8;
+    margin-bottom: 16px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
 }
