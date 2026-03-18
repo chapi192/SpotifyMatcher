@@ -18,11 +18,11 @@ SCOPES = [
 ]
 
 
-def build_oauth():
+def build_oauth(request: Request):
     return SpotifyOAuth(
         client_id=os.getenv("SPOTIFY_CLIENT_ID"),
         client_secret=os.getenv("SPOTIFY_CLIENT_SECRET"),
-        redirect_uri=os.getenv("SPOTIFY_REDIRECT_URI"),
+        redirect_uri=str(request.url_for("callback")),
         scope=" ".join(SCOPES),
         show_dialog=True,
         cache_handler=None
@@ -47,7 +47,7 @@ def get_spotify_client(request: Request):
         print("NO TOKEN IN SESSION")
         return None
 
-    oauth = build_oauth()
+    oauth = build_oauth(request)
     token_info = refresh_if_needed(oauth, token_info)
 
     if not token_info:
