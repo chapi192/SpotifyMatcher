@@ -230,6 +230,7 @@ function highlightActiveMetric() {
 }
 
 wireWorkspaceGlobals(maybeRenderAnalytics);
+window.maybeRenderAnalytics = maybeRenderAnalytics;
 initTooltipSystem();
 loadWorkspace();
 highlightActiveMetric()

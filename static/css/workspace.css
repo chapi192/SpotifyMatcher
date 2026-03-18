@@ -1264,7 +1264,7 @@
     position: relative;
 
     height: 1000px;
-    max-height: 68vh;
+    max-height: 65vh;
 
     background: var(--surface-bg-soft);
     border: 1px solid var(--surface-border);
@@ -1360,7 +1360,7 @@
 
 .ws-rel-weight {
     display: grid;
-    grid-template-columns: 45px 110px 24px 24px;
+    grid-template-columns: 45px 110px 34px 24px;
     align-items: center;
     gap: 8px;
 }
@@ -1410,28 +1410,22 @@
 ========================================= */
 
 .ws-rel-lock {
-    background: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
     border: none;
-
-    font-size: 14px;
-
     cursor: pointer;
+    transition: all 0.2s ease;
+}
 
-    opacity: 0.45;
-
-    transition:
-        opacity 0.15s ease,
-        transform 0.15s ease;
+.ws-rel-lock.locked {
+    background: var(--accent-green);
+    box-shadow: 0 0 6px rgba(29,185,84,0.7);
 }
 
 .ws-rel-lock:hover {
     opacity: 0.8;
-}
-
-.ws-rel-lock.locked {
-    opacity: 1;
-    color: var(--accent-green);
-    transform: scale(1.05);
 }
 
 /* =========================================

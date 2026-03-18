@@ -1098,13 +1098,42 @@ def relationships(request: Request):
         artist_set = set()
         album_set = set()
         decade_set = set()
+        track_set = set()
+        track_lookup = {}
 
         genre_counts = Counter()
         artist_counts = Counter()
         album_counts = Counter()
         decade_counts = Counter()
 
+        total_duration = 0
+        track_counter = 0
+
         for track in tracks:
+
+            track_id = track.get("track_id")
+            track_name = track.get("track_name")
+
+            artist_names = [
+                a.get("artist_name")
+                for a in track.get("artists", [])
+                if a.get("artist_name")
+            ]
+
+            if track_id:
+                track_set.add(track_id)
+
+                if track_id not in track_lookup:
+                    track_lookup[track_id] = {
+                        "track_id": track_id,
+                        "track_name": track_name or "Unknown Track",
+                        "artists": artist_names,
+                    }
+
+            duration = track.get("duration_ms")
+            if duration:
+                total_duration += duration
+                track_counter += 1
 
             album = track.get("album") or {}
             album_name = album.get("album_name")
@@ -1132,7 +1161,7 @@ def relationships(request: Request):
                     if genre:
                         genre_set.add(genre)
                         genre_counts[genre] += 1
-
+                        
         dominant_genre = genre_counts.most_common(1)[0][0] if genre_counts else "-"
         dominant_artist = artist_counts.most_common(1)[0][0] if artist_counts else "-"
         dominant_album = album_counts.most_common(1)[0][0] if album_counts else "-"
@@ -1148,6 +1177,10 @@ def relationships(request: Request):
             "artist_set": artist_set,
             "album_set": album_set,
             "decade_set": decade_set,
+            "track_set": track_set,
+            "track_lookup": track_lookup,
+
+            "total_duration": total_duration,
 
             "genre_counts": genre_counts,
             "artist_counts": artist_counts,
@@ -1195,6 +1228,7 @@ def relationships(request: Request):
             "artist_count": sig["artist_count"],
             "album_count": sig["album_count"],
             "decade_count": sig["decade_count"],
+            "total_duration": sig["total_duration"],
         })
 
     edges = []
@@ -1210,16 +1244,53 @@ def relationships(request: Request):
             shared_album_items = sorted(a["album_set"] & b["album_set"])
             shared_decade_items = sorted(a["decade_set"] & b["decade_set"])
 
+            shared_track_ids = list(a["track_set"] & b["track_set"])
+
+            # ---- Scores ----
+
             genre_score = jaccard(a["genre_set"], b["genre_set"])
             artist_score = jaccard(a["artist_set"], b["artist_set"])
             album_score = jaccard(a["album_set"], b["album_set"])
             decade_score = jaccard(a["decade_set"], b["decade_set"])
+            track_score = jaccard(a["track_set"], b["track_set"])
+
+            # duration similarity (total playlist time)
+            if a["total_duration"] > 0 and b["total_duration"] > 0:
+                duration_score = 1 - abs(a["total_duration"] - b["total_duration"]) / max(a["total_duration"], b["total_duration"])
+            else:
+                duration_score = 0
+
+            duration_score = max(0, min(1, duration_score))
+
+            # ---- sample shared tracks ----
+
+            import random
+
+            sample_tracks = []
+
+            if shared_track_ids:
+                sampled_ids = random.sample(
+                    shared_track_ids,
+                    min(3, len(shared_track_ids))
+                )
+
+                for tid in sampled_ids:
+                    t = a["track_lookup"].get(tid) or b["track_lookup"].get(tid)
+                    if t:
+                        sample_tracks.append({
+                            "name": t["track_name"],
+                            "artists": t["artists"]
+                        })
+
+            # ---- total score ----
 
             total_score = (
-                0.50 * genre_score +
-                0.35 * artist_score +
+                0.40 * genre_score +
+                0.25 * artist_score +
                 0.10 * album_score +
-                0.05 * decade_score
+                0.05 * decade_score +
+                0.15 * track_score +
+                0.05 * duration_score
             )
 
             edges.append({
@@ -1227,26 +1298,32 @@ def relationships(request: Request):
                 "target": b["playlist_id"],
 
                 "score": round(total_score, 4),
+
                 "genre_score": round(genre_score, 4),
                 "artist_score": round(artist_score, 4),
                 "album_score": round(album_score, 4),
                 "decade_score": round(decade_score, 4),
+                "track_score": round(track_score, 4),
+                "duration_score": round(duration_score, 4),
 
                 "shared_genres": len(shared_genre_items),
                 "shared_artists": len(shared_artist_items),
                 "shared_albums": len(shared_album_items),
                 "shared_decades": len(shared_decade_items),
+                "shared_tracks": len(shared_track_ids),
 
                 "genre_overlap": shared_genre_items[:3],
                 "artist_overlap": shared_artist_items[:3],
                 "album_overlap": shared_album_items[:2],
                 "decade_overlap": shared_decade_items[:2],
+
+                "track_overlap_sample": sample_tracks
             })
 
     return {
-        "status": "ready",
-        "data": {
-            "playlists": playlist_cards,
-            "edges": edges
-        }
+    "status": "ready",
+    "data": {
+        "playlists": playlist_cards,
+        "edges": edges
     }
+}
