@@ -174,7 +174,7 @@ async function maybeRenderAnalytics() {
 
     if (!payload || payload.status !== "ready") {
         document.getElementById("wsAnalyticsOutput").innerHTML =
-            `<p style="opacity:0.7;">No data available.</p>`;
+            `<p style="opacity:0.7;">No data available. Check the Playlists tab...!</p>`;
         return;
     }
 

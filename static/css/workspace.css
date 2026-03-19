@@ -25,6 +25,8 @@
     transition:
         color 0.15s ease,
         background 0.15s ease;
+
+    margin: 0;
 }
 
 .ws-help:hover {
@@ -789,6 +791,9 @@
 ========================================= */
 
 .ws-avg-header {
+
+    position: relative;
+
     display: flex;
     flex-direction: column;
 
