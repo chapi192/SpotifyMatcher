@@ -35,16 +35,16 @@ export async function renderAvgLength(data, currentSelection) {
     out.innerHTML = `
         <div class="ws-avg-full">
 
-           <div class="ws-avg-header">
+           <div class="ws-header">
 
-                <div class="ws-avg-title">
+                <div class="ws-title">
                     Average Track Length:
-                    <span class="ws-avg-inline-number">
+                    <span class="ws-title-number">
                         ${formatTime(data.average_length_seconds)}
                     </span>
                 </div>
 
-                <div class="ws-avg-selection">
+                <div class="ws-selection">
                     ${
                         currentSelection === "combined"
                             ? `

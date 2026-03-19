@@ -184,8 +184,9 @@ export function renderReleaseYears(data, currentSelection) {
     out.innerHTML = `
     <div class="ws-release-full">
 
-        <div class="ws-avg-header">
+        <div class="ws-header">
 
+        <!-- 
             <span 
                 class="ws-panel-help ws-help"
                 data-tooltip="Dominant Era - Most commonly appearing decade.
@@ -196,15 +197,15 @@ export function renderReleaseYears(data, currentSelection) {
             >
             ?
             </span>
-
-            <div class="ws-avg-title">
+        -->
+            <div class="ws-title">
                 Release Span:
-                <span class="ws-avg-inline-number">
+                <span class="ws-title-number">
                     ${data.oldest_year}-${data.newest_year}
                 </span>
             </div>
 
-            <div class="ws-avg-selection">
+            <div class="ws-selection">
                 ${
                     currentSelection === "combined"
                         ? `
@@ -329,14 +330,14 @@ export function renderReleaseYears(data, currentSelection) {
 function updateReleaseYearsView(data, currentSelection) {
 
     // Update header numbers
-    const spanEl = document.querySelector(".ws-avg-inline-number");
+    const spanEl = document.querySelector(".ws-title-number");
     if (spanEl) {
         spanEl.textContent = `${data.oldest_year}-${data.newest_year}`;
     }
 
     const { mode, labels, values } = buildTimeSeries(data);
 
-    const selectionEl = document.querySelector(".ws-avg-selection");
+    const selectionEl = document.querySelector(".ws-selection");
 
     if (selectionEl) {
 

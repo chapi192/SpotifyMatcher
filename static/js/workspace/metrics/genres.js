@@ -32,14 +32,14 @@ export function renderGenres(data, currentSelection) {
 
     out.innerHTML = `
     <div class="ws-genres-full">
-        <div class="ws-avg-header">
-            <div class="ws-avg-title">
+        <div class="ws-header">
+            <div class="ws-title">
                 Genre Diversity:
-                <span class="ws-avg-inline-number">${data.diversity_score}</span>
+                <span class="ws-title-number">${data.diversity_score}</span>
             </div>
 
-            <div class="ws-genres-header-row">
-                <div class="ws-genres-selection-left">
+            <div class="ws-subrow">
+                <div class="ws-selection">
                     ${
                         currentSelection === "combined"
                             ? `

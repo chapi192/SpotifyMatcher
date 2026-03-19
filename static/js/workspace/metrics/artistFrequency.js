@@ -23,14 +23,14 @@ export function renderArtistFrequency(data, currentSelection) {
 
     out.innerHTML = `
     <div class="ws-artist-full">
-        <div class="ws-avg-header">
-            <div class="ws-avg-title">
+        <div class="ws-header">
+            <div class="ws-title">
                 Artist Diversity:
-                <span class="ws-avg-inline-number">${data.diversity_score}</span>
+                <span class="ws-title-number">${data.diversity_score}</span>
             </div>
 
-            <div class="ws-artist-header-row">
-                <div class="ws-artist-selection-left">
+            <div class="ws-subrow">
+                <div class="ws-selection">
                     ${
                         currentSelection === "combined"
                             ? `

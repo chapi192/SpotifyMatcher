@@ -610,79 +610,60 @@ export function renderRelationships(data) {
     out.innerHTML = `
     <div class="ws-rel-full">
 
-        <div class="ws-avg-header">
+        <div class="ws-header">
 
-            <div class="ws-avg-title">
+            <div class="ws-title">
                 Average Similarity:
-                <span class="ws-avg-inline-number">
+                <span class="ws-title-number">
                     ${(avgScore * 100).toFixed(1)}%
                 </span>
             </div>
 
             <div class="ws-rel-weight-controls">
 
-                <div class="ws-rel-weight-group">
-
-                    <div class="ws-rel-weight">
-                        <label>Genres</label>
-                        <input type="range" id="relGenre" min="0" max="100">
-                        <span id="relGenreVal">35%</span>
-                        <button class="ws-rel-lock" data-lock="genre"></button>
-                    </div>
-
-                    <div class="ws-rel-weight">
-                        <label>Artists</label>
-                        <input type="range" id="relArtist" min="0" max="100">
-                        <span id="relArtistVal">25%</span>
-                        <button class="ws-rel-lock" data-lock="artist"></button>
-                    </div>
-
-                    <div class="ws-rel-weight">
-                        <label>Tracks</label>
-                        <input type="range" id="relTrack" min="0" max="100">
-                        <span id="relTrackVal">15%</span>
-                        <button class="ws-rel-lock" data-lock="track"></button>
-                    </div>
-
+                <div class="ws-rel-weight">
+                    <label>Genres</label>
+                    <input type="range" id="relGenre" min="0" max="100">
+                    <span id="relGenreVal">35%</span>
+                    <button class="ws-rel-lock" data-lock="genre"></button>
                 </div>
 
-                <div class="ws-rel-weight-group">
+                <div class="ws-rel-weight">
+                    <label>Artists</label>
+                    <input type="range" id="relArtist" min="0" max="100">
+                    <span id="relArtistVal">25%</span>
+                    <button class="ws-rel-lock" data-lock="artist"></button>
+                </div>
 
-                    <div class="ws-rel-weight">
-                        <label>Albums</label>
-                        <input type="range" id="relAlbum" min="0" max="100">
-                        <span id="relAlbumVal">10%</span>
-                        <button class="ws-rel-lock" data-lock="album"></button>
-                    </div>
+                <div class="ws-rel-weight">
+                    <label>Tracks</label>
+                    <input type="range" id="relTrack" min="0" max="100">
+                    <span id="relTrackVal">15%</span>
+                    <button class="ws-rel-lock" data-lock="track"></button>
+                </div>
 
-                    <div class="ws-rel-weight">
-                        <label>Decades</label>
-                        <input type="range" id="relDecade" min="0" max="100">
-                        <span id="relDecadeVal">5%</span>
-                        <button class="ws-rel-lock" data-lock="decade"></button>
-                    </div>
+                <div class="ws-rel-weight">
+                    <label>Albums</label>
+                    <input type="range" id="relAlbum" min="0" max="100">
+                    <span id="relAlbumVal">10%</span>
+                    <button class="ws-rel-lock" data-lock="album"></button>
+                </div>
 
-                    <div class="ws-rel-weight">
-                        <label>Duration</label>
-                        <input type="range" id="relDuration" min="0" max="100">
-                        <span id="relDurationVal">10%</span>
-                        <button class="ws-rel-lock" data-lock="duration"></button>
-                    </div>
+                <div class="ws-rel-weight">
+                    <label>Decades</label>
+                    <input type="range" id="relDecade" min="0" max="100">
+                    <span id="relDecadeVal">5%</span>
+                    <button class="ws-rel-lock" data-lock="decade"></button>
+                </div>
 
+                <div class="ws-rel-weight">
+                    <label>Duration</label>
+                    <input type="range" id="relDuration" min="0" max="100">
+                    <span id="relDurationVal">10%</span>
+                    <button class="ws-rel-lock" data-lock="duration"></button>
                 </div>
 
             </div>
-
-            <span
-                class="ws-panel-help ws-help ws-rel-chart-help"
-                data-tooltip="Each node is a playlist.
-
-    Each line represents similarity between playlists.
-
-    Adjust weighting sliders to explore relationships.
-    
-    Average Similarity and overall similarities on edges are calculated based on the weighting of metrics given by sliders."
-            >?</span>
 
         </div>
 
@@ -730,7 +711,7 @@ export function renderRelationships(data) {
     const trackSlider = document.getElementById("relTrack");
     const durationSlider = document.getElementById("relDuration");
 
-    const avgScoreEl = out.querySelector(".ws-avg-inline-number");
+    const avgScoreEl = out.querySelector(".ws-title-number");
 
     const weightEls = {
         genre: document.getElementById("relGenreVal"),
