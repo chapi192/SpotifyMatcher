@@ -133,6 +133,24 @@ export function renderAlbumFrequency(data, currentSelection) {
 
     out.innerHTML = `
     <div class="ws-album-full">
+
+        <span 
+            class="ws-panel-help ws-help"
+            data-tooltip="This page shows you the most common albums in your selection. The pi chart represents album contribution of the top 10; not the whole selection.
+            
+            Album Concentration - How much the selection is dominated by a few albums.
+
+        Top Album - The album that contributes the most tracks.
+
+        Unique Appearances - % of albums that only appear once.
+
+        Avg Tracks / Album - Average number of tracks contributed by each album.
+
+        Top 10 Albums - % of tracks that come from the top 10 albums.
+
+        Multi-Track Albums - % of albums that contribute more than one track."
+        >Help</span>
+
         <div class="ws-header">
             <div class="ws-title">
                 Album Diversity:
@@ -165,21 +183,6 @@ export function renderAlbumFrequency(data, currentSelection) {
         <div class="ws-album-layout">
             <div class="ws-album-panel">
                 <div class="ws-artist-card">
-                    <span
-                        class="ws-panel-help ws-help"
-                        data-tooltip="Album Concentration - How much the selection is dominated by a few albums.
-
-Top Album - The album that contributes the most tracks.
-
-Unique Appearances - % of albums that only appear once.
-
-Avg Tracks / Album - Average number of tracks contributed by each album.
-
-Top 10 Albums - % of tracks that come from the top 10 albums.
-
-Multi-Track Albums - % of albums that contribute more than one track."
-                    >?</span>
-
                     <div class="ws-album-label">Concentration</div>
                     <div class="ws-album-value">${data.concentration}</div>
                 </div>

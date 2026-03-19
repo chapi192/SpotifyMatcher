@@ -33,9 +33,10 @@ export function getTimeCommitmentLabel(totalSeconds) {
     if (hours < 4) return "Extended Play";
     if (hours < 8) return "Work Day";
     if (hours < 16) return "Weekend Bop";
-    if (hours < 100) return "Serious Investment";
-    if (hours < 400) return "Epic Journey";
-    return "Year-Long Listen";
+    if (hours < 100) return "Notable Investment";
+    if (hours < 400) return "Serious Commitment";
+    if (hours < 1000) return "Year-Long Listen";
+    return "Epic Journey";
 }
 
 export function getFlowDensityLabel(pct) {

@@ -73,17 +73,17 @@ export async function renderAvgLength(data, currentSelection) {
 
                     <span 
                         class="ws-panel-help ws-help"
-                        data-tooltip="Commitment - The total time it would take to listen to all tracks in the selection.
+                        data-tooltip="This page analyzes the lengths of tracks in your selection.
+                        
+                        Commitment - The total time it would take to listen to all tracks in the selection, from a &quot;Quick Session&quot; (under 1 hour) to an &quot;Epic Journey&quot; (over 1000 hours).
 
-                        Flow Density - The percentage of tracks that are near the average length.
+                        Consistency - How grouped tracks are to the average length. &quot;Tight&quot; means tracks are close to the average, while &quot;Wide Range&quot; means there are many track lengths.
 
-                        Consistency - How similar track lengths are to the average length.
-
-                        Radio - Percentage of tracks in radio-friendly length (between 3 and 5 minutes).
+                        Radio - Percentage of tracks in radio-friendly length of 3 and 5 minutes.
 
                     "
                     >
-                    ?
+                    Help
                     </span>
 
                     <div class="ws-overlay-row">
@@ -95,16 +95,10 @@ export async function renderAvgLength(data, currentSelection) {
                     </div>
 
                     <div class="ws-overlay-row">
-                        <span>Flow Density</span>
+                        <span>Consistency</span>
                         <span>
                             ${flowLabel}
-                            (${data.flow_density_pct}%)
                         </span>
-                    </div>
-
-                    <div class="ws-overlay-row">
-                        <span>Consistency</span>
-                        <span>${consistency.label}</span>
                     </div>
 
                     <div class="ws-overlay-row">

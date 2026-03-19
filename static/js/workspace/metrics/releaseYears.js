@@ -184,20 +184,21 @@ export function renderReleaseYears(data, currentSelection) {
     out.innerHTML = `
     <div class="ws-release-full">
 
+        <span 
+            class="ws-panel-help ws-help"
+            data-tooltip="This page shows the release years of the tracks in your selection.
+            
+            Dominant Era - Most commonly appearing decade.
+
+            Distribution - Concentration across decades. &quot;Precise&quot; means most tracks are from the same decade, while &quot;Diverse&quot; means tracks are spread out over many decades.
+
+            Generational Lean - Most represented generation of selection. &quot;Boomer&quot; pre-1980 tracks, &quot;Gen X&quot; 80s and 90s tracks, &quot;Millennial&quot; 2000s and 2010s tracks, and &quot;Gen Z&quot; 2020s tracks.
+            "
+        >
+        Help
+        </span>
+
         <div class="ws-header">
-
-        <!-- 
-            <span 
-                class="ws-panel-help ws-help"
-                data-tooltip="Dominant Era - Most commonly appearing decade.
-
-                Distribution - Concentration across decades.
-
-                Generational Lean - Most represented generation of selection."
-            >
-            ?
-            </span>
-        -->
             <div class="ws-title">
                 Release Span:
                 <span class="ws-title-number">

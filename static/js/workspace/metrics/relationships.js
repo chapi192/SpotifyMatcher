@@ -610,6 +610,16 @@ export function renderRelationships(data) {
     out.innerHTML = `
     <div class="ws-rel-full">
 
+        <span 
+            class="ws-panel-help ws-help"
+            data-tooltip="This page shows you the connections between your selected playlists. The brighter an edge and the closer two playlist are, the more alike they are. Calculated using the weighted sliders. Hover and edge or a node for more info.
+
+            Track - Tracks appearing in both playlists.
+            Duration - Playlist listen times.
+            ">
+        Help
+        </span>
+
         <div class="ws-header">
 
             <div class="ws-title">

@@ -845,6 +845,35 @@ def genres(request: Request):
             max_genre_track_name = max_genre_track.get("track_name")
             max_genre_track_id = max_genre_track.get("track_id")
 
+        # ---------------------------------
+        # Build full + bucketed datasets
+        # ---------------------------------
+
+        all_genres = [
+            {"genre": g, "count": c}
+            for g, c in sorted_genres
+        ]
+
+        if len(sorted_genres) > 50:
+            top = sorted_genres[:165]
+            rest = sorted_genres[165:]
+
+            other_count = sum(c for _, c in rest)
+
+            bucketed = [
+                {"genre": g, "count": c}
+                for g, c in top
+            ]
+
+            if other_count > 0:
+                bucketed.append({
+                    "genre": "Other",
+                    "count": other_count
+                })
+
+        else:
+            bucketed = all_genres
+
         return {
             "track_count": track_count,
             "unique_genres": unique_genres,
@@ -866,7 +895,11 @@ def genres(request: Request):
             "top_10": [
                 {"genre": g, "count": c}
                 for g, c in sorted_genres[:10]
-            ]
+            ],
+
+            "all_genres": all_genres,
+
+            "display_genres": bucketed
         }
 
     # ---------------------------------
