@@ -186,6 +186,17 @@ export function renderReleaseYears(data, currentSelection) {
 
         <div class="ws-avg-header">
 
+            <span 
+                class="ws-panel-help ws-help"
+                data-tooltip="Dominant Era - Most commonly appearing decade.
+
+                Distribution - Concentration across decades.
+
+                Generational Lean - Most represented generation of selection."
+            >
+            ?
+            </span>
+
             <div class="ws-avg-title">
                 Release Span:
                 <span class="ws-avg-inline-number">
@@ -240,40 +251,17 @@ export function renderReleaseYears(data, currentSelection) {
                 <div class="ws-release-panel">
 
                     <div class="ws-artist-card ws-release-dominant">
-
-                        <span 
-                            class="ws-panel-help ws-help"
-                            data-tooltip="Dominant Era - Most commonly appearing decade.
-
-                            Distribution - Concentration across decades.
-
-                            Generational Lean - Most represented generation of selection."
-                        >
-                        ?
-                        </span>
                         
                         <div class="ws-artist-label">Newest</div>
                         <div class="ws-artist-value">
-                            ${
-                                data.newest_track
-                                    ? `<a href="${data.newest_track.url}" target="_blank">
-                                        ${data.newest_track.name}
-                                    </a> (${data.newest_year})`
-                                    : data.newest_year
-                            } 
+                            ${data.newest_year || ""}
                         </div>
                     </div>
 
                     <div class="ws-artist-card">
                         <div class="ws-artist-label">Oldest</div>
                         <div class="ws-artist-value">
-                            ${
-                                data.oldest_track
-                                    ? `<a href="${data.oldest_track.url}" target="_blank">
-                                        ${data.oldest_track.name}
-                                    </a> (${data.oldest_year})`
-                                    : data.oldest_year
-                            }
+                            ${data.oldest_year || ""}
                         </div>
                     </div>
 

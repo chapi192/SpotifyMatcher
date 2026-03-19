@@ -12,6 +12,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 
+{% if request.url.path == "/dashboard" %}
+<div id="floatingWorkspaceBtn" class="floating-workspace-btn">
+    Insights →
+</div>
+{% endif %}
+
 <body class="{% block body_class %}{% endblock %}">
 
 <nav class="navbar">
@@ -25,7 +31,7 @@
 
         {% if request.session.get("token_info") %}
             <a href="/dashboard">Playlists</a> <!-- Dashboard -->
-            <a id="navWorkspace" class="nav-disabled" href="/workspace">Analysis Workspace</a>
+            <a id="navWorkspace" class="nav-disabled" href="/workspace">Insights</a>
             <!-- <a id="navRecommendations" class="nav-disabled" href="/recommendations">Recommendations</a> -->
             <a href="/logout" onclick="handleLogout()">Logout</a>
         {% else %}
@@ -73,8 +79,25 @@ async function refreshNavGating() {
 
         const isBuilding = (data.build_status === "building");
         const hasSelection = !!data.has_selection;
+        const hasData = !!data.has_playlist_data;
 
         workspace.classList.toggle("nav-disabled", isBuilding || !hasSelection);
+
+        // floating button logic
+        const floatingBtn = document.getElementById("floatingWorkspaceBtn");
+
+        if (floatingBtn) {
+
+            const ready = !isBuilding && hasSelection && hasData;
+
+            floatingBtn.classList.toggle("visible", ready);
+
+            if (ready) {
+                floatingBtn.onclick = () => {
+                    window.location.href = "/workspace";
+                };
+            }
+        }
 
     } catch (e) {
         workspace.classList.add("nav-disabled");

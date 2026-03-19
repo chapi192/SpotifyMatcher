@@ -176,5 +176,5 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None, ca
         "playlist_name": playlist_name,
         "image": playlist_image,
         "playlist_track_total": playlist_total_tracks,
-        "tracks": playlist_tracks
+        "tracks": playlist_tracks,
     }

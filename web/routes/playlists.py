@@ -30,7 +30,8 @@ def api_playlists(request: Request):
                 "id": p["id"],
                 "name": p["name"],
                 "track_count": p["tracks"]["total"],
-                "image": p["images"][0]["url"] if p.get("images") else None
+                "image": p["images"][0]["url"] if p.get("images") else None,
+                "is_owner": p["owner"]["id"] == user_id
             })
 
         if results["next"]:
@@ -45,7 +46,8 @@ def api_playlists(request: Request):
             "id": "__liked__",
             "name": "Liked Songs",
             "track_count": liked_meta["total"],
-            "image": None
+            "image": None,
+            "is_owner": True
         })
     except Exception:
         pass

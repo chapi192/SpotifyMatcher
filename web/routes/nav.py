@@ -30,6 +30,7 @@ def nav_state(request: Request):
 
     return {
         "build_status": build_status,
-        "has_selection": bool(selected_ids) and loaded,
+        "has_selection": bool(selected_ids),
+        "has_playlist_data": loaded,
         "breakdown_source": breakdown_source
     }
