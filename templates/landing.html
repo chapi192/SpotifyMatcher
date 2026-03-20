@@ -2,15 +2,160 @@
 
 {% block content %}
 
-<h1 style="font-size:48px;">Understand Your Spotify</h1>
-<p style="opacity:0.8; font-size:20px;">
-    Deep analysis of your playlists, genres, mood, and structure.
-</p>
+<div class="landing-page">
 
-<br><br>
+    <!-- HERO -->
+    <section class="landing-hero">
 
-<button class="btn" onclick="window.location.href='/login'">
-    Login with Spotify
-</button>
+        <h1 class="landing-hero-title">
+            WappedNow
+        </h1>
+
+        <p class="landing-hero-subtitle">
+            Dont wait for wrapped every year; explore your spotify right now.
+        </p>
+
+        <div class="landing-cta">
+            <button class="btn" onclick="window.location.href='/login'">
+                Analyze Your Spotify
+            </button>
+        </div>
+
+    </section>
+
+    <!-- =========================
+         DECADES
+    ========================== -->
+    <section class="landing-section">
+
+        <div class="landing-header">
+            <div class="landing-section-heading">
+
+                <div class="landing-section-main">
+                    When is your music from?
+                </div>
+
+                <div class="landing-section-title" id="decadeTitle">
+                    Select a playlist
+                </div>
+
+                <div class="landing-section-subtitle" id="decadeSubtitle">
+                    -
+                </div>
+
+            </div>
+        </div>
+
+        <div class="landing-decades-layout">
+
+            <div id="playlistList" class="landing-playlist-list"></div>
+
+            <div class="landing-chart-area">
+
+                <div class="landing-chart-shell">
+
+                    <div class="landing-chart-controls">
+                        <button data-type="spiral" class="chart-btn active">Spiral</button>
+                        <button data-type="ring" class="chart-btn">Ring</button>
+                    </div>
+
+                    <canvas id="decadeChart"></canvas>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- =========================
+         Artists
+    ========================== -->
+    <section class="landing-section landing-graph-section">
+
+        <div class="landing-header">
+            <div class="landing-section-heading">
+
+                <div class="landing-section-main">
+                    How Your Music Connects
+                </div>
+
+                <div class="landing-section-title" id="artistTitle">
+                    Select a playlist
+                </div>
+
+                <div class="landing-section-subtitle" id="artistSubtitle">
+                    -
+                </div>
+
+            </div>
+        </div>
+
+        <div class="landing-artist-layout">
+
+            <!-- LEFT: ACTIVE ARTIST -->
+            <div class="landing-artist-active">
+                <div class="landing-artist-active-img"></div>
+
+                <div class="landing-artist-active-info">
+                    <a class="landing-artist-active-name" target="_blank"></a>
+                    <div class="landing-artist-active-meta"></div>
+                </div>
+            </div>
+
+            <!-- CENTER: TREEMAP -->
+            <div class="landing-artist-chart">
+                <canvas id="landingRelationshipGraph"></canvas>
+            </div>
+
+            <!-- RIGHT: PLAYLISTS -->
+            <div class="landing-artist-playlists" id="artistPlaylistList"></div>
+
+        </div>
+
+    </section>
+
+    <!-- =========================
+         DEMO
+    ========================== -->
+    <section class="landing-section">
+
+        <div class="landing-header">
+            <div class="landing-section-heading">
+
+                <div class="landing-section-main">
+                    Explore Playlist Connections
+                </div>
+            </div>
+        </div>
+
+        <div class="landing-graph-wrap">
+            <div id="landingRelationshipWrap" class="landing-graph-shell"></div>
+        </div>
+
+    </section>
+
+    <!-- =========================
+         CTA
+    ========================== -->
+    <section class="landing-section landing-cta-section">
+
+        <div class="landing-header landing-cta-header">
+            <div class="landing-section-main">
+                Analyze Your Spotify
+            </div>
+
+            <button class="landing-cta-btn" onclick="window.location.href='/login'">
+                Get Started
+            </button>
+        </div>
+
+    </section>
+
+</div>
+
+<!-- LOAD SCRIPT -->
+<script type="module" src="/static/js/landing.js"></script>
 
 {% endblock %}

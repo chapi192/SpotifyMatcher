@@ -30,10 +30,14 @@ def logout(request: Request):
 @router.get("/callback")
 def callback(request: Request):
     oauth = build_oauth(request)
-    code = request.query_params.get("code")
 
+    error = request.query_params.get("error")
+    if error:
+        return RedirectResponse(url="/")
+
+    code = request.query_params.get("code")
     if not code:
-        return JSONResponse({"error": "Missing code"}, status_code=400)
+        return RedirectResponse(url="/")
 
     token_info = oauth.get_access_token(code, check_cache=False)
     request.session["token_info"] = token_info

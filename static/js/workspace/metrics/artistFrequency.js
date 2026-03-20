@@ -23,14 +23,32 @@ export function renderArtistFrequency(data, currentSelection) {
 
     out.innerHTML = `
     <div class="ws-artist-full">
-        <div class="ws-avg-header">
-            <div class="ws-avg-title">
+        <span 
+            class="ws-panel-help ws-help"
+            data-tooltip="This page shows you the most common artists in your selection. The graphics represent the top 10 artists; not the whole selection.
+            
+            Artist Concentration - How much the selection is dominated by a few artists. More diverse = lower concentration.
+
+            Top Artist - The artist that appears on the most tracks in the selection.
+
+            Unique Appearances - Percentage of artists that only appear on one track. 
+
+            Avg Tracks / Artist - Average number of tracks each artist appears on.
+
+            Multi-Artist Tracks - Percentage of tracks that feature more than one artist.
+
+            Max Artists On Track - The track with the most artists.
+    "
+        >Help</span>
+        
+        <div class="ws-header">
+            <div class="ws-title">
                 Artist Diversity:
-                <span class="ws-avg-inline-number">${data.diversity_score}</span>
+                <span class="ws-title-number">${data.diversity_score}</span>
             </div>
 
-            <div class="ws-artist-header-row">
-                <div class="ws-artist-selection-left">
+            <div class="ws-subrow">
+                <div class="ws-selection">
                     ${
                         currentSelection === "combined"
                             ? `
@@ -59,22 +77,6 @@ export function renderArtistFrequency(data, currentSelection) {
         <div class="ws-artist-layout">
             <div class="ws-artist-panel">
                 <div class="ws-artist-card">
-                    <span 
-                            class="ws-panel-help ws-help"
-                            data-tooltip="Artist Concentration - How much the selection is dominated by a few artists. More diverse = lower concentration.
-
-                            Top Artist - The artist that appears on the most tracks in the selection.
-
-                            Unique Appearances - Percentage of artists that only appear on one track. 
-
-                            Avg Tracks / Artist - Average number of tracks each artist appears on.
-
-                            Multi-Artist Tracks - Percentage of tracks that feature more than one artist.
-
-                            Max Artists On Track - The track with the most artists.
-                    "
-                        >?</span>
-
                     <div class="ws-artist-label">Concentration</div>
                     <div class="ws-artist-value">${data.concentration}</div>
                 </div>

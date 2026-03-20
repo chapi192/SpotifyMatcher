@@ -19,6 +19,15 @@ router = APIRouter()
 # ------------------------------------------------------------
 
 def get_dataset(request: Request):
+
+    if not request.session.get("token_info"):
+        dataset = load_demo_dataset()
+
+        if not dataset:
+            return None, {"status": "error", "message": "Demo data missing"}
+
+        return (dataset, None), None
+
     sp = get_spotify_client(request)
     if not sp:
         return None, {"status": "error", "message": "Not logged in"}
@@ -845,6 +854,35 @@ def genres(request: Request):
             max_genre_track_name = max_genre_track.get("track_name")
             max_genre_track_id = max_genre_track.get("track_id")
 
+        # ---------------------------------
+        # Build full + bucketed datasets
+        # ---------------------------------
+
+        all_genres = [
+            {"genre": g, "count": c}
+            for g, c in sorted_genres
+        ]
+
+        if len(sorted_genres) > 50:
+            top = sorted_genres[:165]
+            rest = sorted_genres[165:]
+
+            other_count = sum(c for _, c in rest)
+
+            bucketed = [
+                {"genre": g, "count": c}
+                for g, c in top
+            ]
+
+            if other_count > 0:
+                bucketed.append({
+                    "genre": "Other",
+                    "count": other_count
+                })
+
+        else:
+            bucketed = all_genres
+
         return {
             "track_count": track_count,
             "unique_genres": unique_genres,
@@ -866,7 +904,11 @@ def genres(request: Request):
             "top_10": [
                 {"genre": g, "count": c}
                 for g, c in sorted_genres[:10]
-            ]
+            ],
+
+            "all_genres": all_genres,
+
+            "display_genres": bucketed
         }
 
     # ---------------------------------
@@ -1327,3 +1369,356 @@ def relationships(request: Request):
         "edges": edges
     }
 }
+
+# =====================================================================================================================================================
+
+import json
+from pathlib import Path
+
+DEMO_PATH = Path("static/demoData.json")
+
+
+def load_demo_dataset():
+    if not DEMO_PATH.exists():
+        return None
+
+    with open(DEMO_PATH, "r") as f:
+        return json.load(f)
+    
+@router.get("/api/demo-snapshot")
+def demo_snapshot(request: Request):
+
+    genres_data = genres(request)
+    years_data = release_years(request)
+
+    if genres_data.get("status") != "ready":
+        return {"status": "error", "message": "Genres not ready"}
+
+    if years_data.get("status") != "ready":
+        return {"status": "error", "message": "Years not ready"}
+
+    return {
+        "status": "ready",
+        "data": {
+            "genres": genres_data["data"]["combined"],
+            "years": years_data["data"]["combined"]
+        }
+    }
+
+from fastapi import APIRouter
+import statistics
+from collections import Counter
+
+@router.get("/api/demo/release-years")
+def demo_release_years():
+
+    demo_path = Path("static/demoData.json")
+
+    if not demo_path.exists():
+        return {"status": "error", "message": "demoData.json not found"}
+
+    with open(demo_path, "r") as f:
+        dataset = json.load(f)
+
+    # =========================
+    # METRICS FUNCTION
+    # =========================
+    def compute_year_metrics(tracks):
+
+        years = []
+
+        for track in tracks:
+            release_date = track.get("album", {}).get("release_date")
+            if release_date and len(release_date) >= 4:
+                try:
+                    years.append(int(release_date[:4]))
+                except:
+                    continue
+
+        if not years:
+            return None
+
+        counts = Counter(years)
+
+        oldest = min(years)
+        newest = max(years)
+        median_year = int(statistics.median(years))
+        span = newest - oldest
+
+        decade_counts = {}
+        for y in years:
+            decade = (y // 10) * 10
+            decade_counts[decade] = decade_counts.get(decade, 0) + 1
+
+        sorted_years = dict(sorted(counts.items()))
+        sorted_decades = dict(sorted(decade_counts.items()))
+
+        avg_year = statistics.mean(years)
+        recency_score = round((avg_year - oldest) / (span + 1) * 100, 1)
+
+        return {
+            "track_count": len(years),
+            "year_counts": sorted_years,
+            "decade_counts": sorted_decades,
+            "oldest_year": oldest,
+            "newest_year": newest,
+            "median_year": median_year,
+            "year_span": span,
+            "recency_score": recency_score
+        }
+
+    # =========================
+    # BUILD RESPONSE
+    # =========================
+    playlists_out = {}
+    combined_tracks = []
+
+    for pid, playlist in dataset.items():
+
+        tracks = playlist.get("tracks", [])
+
+        stats = compute_year_metrics(tracks)
+        if not stats:
+            continue
+
+        playlists_out[pid] = {
+            "playlist_name": playlist.get("playlist_name"),
+            "image": playlist.get("image"),
+            **stats
+        }
+
+        combined_tracks.extend(tracks)
+
+    if not playlists_out:
+        return {"status": "empty"}
+
+    combined_stats = compute_year_metrics(combined_tracks)
+
+    return {
+        "status": "ready",
+        "data": {
+            "combined": combined_stats,
+            "playlists": playlists_out
+        }
+    }
+
+@router.get("/api/landing-artists")
+def landing_artists(request: Request):
+
+    demo_path = Path("static/demoData.json")
+
+    if not demo_path.exists():
+        return {"status": "error", "message": "demoData.json not found"}
+
+    with open(demo_path, "r") as f:
+        dataset = json.load(f)
+
+    def compute_artist_metrics(tracks):
+
+        import math
+
+        total_tracks = 0
+        total_artist_instances = 0
+        max_artists_on_track = 0
+        multi_artist_tracks = 0
+        max_artist_track = None
+
+        counts = {}
+        artist_meta_lookup = {}
+
+        for track in tracks:
+            total_tracks += 1
+
+            track_artists = track.get("artists", [])
+            artist_count_on_track = len(track_artists)
+
+            total_artist_instances += artist_count_on_track
+
+            if artist_count_on_track > max_artists_on_track:
+                max_artists_on_track = artist_count_on_track
+                max_artist_track = track
+
+            if artist_count_on_track > 1:
+                multi_artist_tracks += 1
+
+            for artist in track_artists:
+                artist_id = artist.get("artist_id")
+                artist_name = artist.get("artist_name")
+
+                if not artist_id or not artist_name:
+                    continue
+
+                counts[artist_id] = counts.get(artist_id, 0) + 1
+
+                # store metadata once
+                if artist_id not in artist_meta_lookup:
+                    artist_meta_lookup[artist_id] = {
+                        "artist_name": artist_name,
+                        "image_url": artist.get("image_url")
+                    }
+
+        if not counts or total_artist_instances == 0:
+            return None
+
+        sorted_artists = sorted(
+            counts.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )
+
+        return {
+            "top_10": [
+                {
+                    "artist_id": artist_id,
+                    "artist_name": artist_meta_lookup[artist_id]["artist_name"],
+                    "count": count,
+                    "image_url": artist_meta_lookup[artist_id]["image_url"]
+                }
+                for artist_id, count in sorted_artists[:10]
+            ]
+        }
+
+    combined_tracks = []
+    per_playlist = {}
+
+    for pid, playlist in dataset.items():
+
+        tracks = playlist.get("tracks", [])
+
+        stats = compute_artist_metrics(tracks)
+        if not stats:
+            continue
+
+        per_playlist[pid] = {
+            "playlist_name": playlist["playlist_name"],
+            "image": playlist.get("image"),   
+            "track_count": len(tracks),      
+            **stats
+        }
+
+        combined_tracks.extend(tracks)
+
+    if not combined_tracks:
+        return {"status": "empty"}
+
+    combined_stats = compute_artist_metrics(combined_tracks)
+
+    return {
+        "status": "ready",
+        "data": {
+            "combined": combined_stats,
+            "playlists": per_playlist
+        }
+    }
+
+@router.get("/api/demo/relationships-lite")
+def demo_relationships_lite():
+
+    demo_path = Path("static/demoData.json")
+
+    if not demo_path.exists():
+        return {"status": "error", "message": "demoData.json not found"}
+
+    with open(demo_path, "r") as f:
+        dataset = json.load(f)
+
+    def jaccard(a, b):
+        union = a | b
+        if not union:
+            return 0.0
+
+        score = len(a & b) / len(union)
+        coverage = min(len(a), len(b)) / max(len(a), len(b))
+        return score * coverage
+
+    def build_signature(playlist):
+
+        genre_set = set()
+        artist_set = set()
+        decade_set = set()
+
+        tracks = playlist.get("tracks", [])
+
+        for track in tracks:
+
+            for artist in track.get("artists", []):
+                name = artist.get("artist_name")
+                if name:
+                    artist_set.add(name)
+
+                for g in artist.get("genres", []):
+                    if g:
+                        genre_set.add(g)
+
+            album = track.get("album") or {}
+            rd = album.get("release_date")
+
+            if rd and len(rd) >= 4:
+                try:
+                    decade = str((int(rd[:4]) // 10) * 10)
+                    decade_set.add(decade)
+                except:
+                    pass
+
+        return {
+            "playlist_id": playlist.get("playlist_id"),
+            "playlist_name": playlist.get("playlist_name"),
+            "image": playlist.get("image"),
+            "track_count": len(tracks),
+
+            "genre_set": genre_set,
+            "artist_set": artist_set,
+            "decade_set": decade_set
+        }
+
+    signatures = {
+        pid: build_signature(p)
+        for pid, p in dataset.items()
+    }
+
+    playlists = [
+        {
+            "playlist_id": s["playlist_id"],
+            "playlist_name": s["playlist_name"],
+            "image": s["image"],
+            "track_count": s["track_count"]
+        }
+        for s in signatures.values()
+    ]
+
+    edges = []
+    ids = list(signatures.keys())
+
+    for i in range(len(ids)):
+        for j in range(i + 1, len(ids)):
+
+            a = signatures[ids[i]]
+            b = signatures[ids[j]]
+
+            g = jaccard(a["genre_set"], b["genre_set"])
+            ar = jaccard(a["artist_set"], b["artist_set"])
+            d = jaccard(a["decade_set"], b["decade_set"])
+
+            total = (
+                0.45 * g +
+                0.35 * ar +
+                0.20 * d
+            )
+
+            edges.append({
+                "source": a["playlist_id"],
+                "target": b["playlist_id"],
+                "score": round(total, 4),
+
+                "genre_score": round(g, 4),
+                "artist_score": round(ar, 4),
+                "decade_score": round(d, 4)
+            })
+
+    return {
+        "status": "ready",
+        "data": {
+            "playlists": playlists,
+            "edges": edges
+        }
+    }

@@ -3,6 +3,7 @@ import { escapeHtml } from "../utils.js";
 
 let currentGenreChartType = "treemap";
 let currentActiveGenreLabel = null;
+let currentGenreScope = "top_10";
 
 function truncateText(str, maxLength = 30) {
     if (!str) return "";
@@ -20,9 +21,24 @@ function genreToColor(str) {
     return `hsl(${hue}, 60%, 45%)`;
 }
 
-export function renderGenres(data, currentSelection) {
+function getGradientColor(index, total) {
+    if (total <= 1) return "hsl(140, 60%, 45%)";
 
-    const out = document.getElementById("wsAnalyticsOutput");
+    const t = index / (total - 1);
+
+    const hueStart = 140;
+    const hueEnd = 320;
+
+    const hue = hueStart + (hueEnd - hueStart) * t;
+
+    const lightness = 40 + (Math.sin(t * Math.PI * 4) * 8);
+
+    return `hsl(${hue}, 65%, ${lightness}%)`;
+}
+
+export function renderGenres(data, currentSelection, targetId = "wsAnalyticsOutput") {
+
+    const out = document.getElementById(targetId);
 
     if (!data || !data.top_10) {
         out.innerHTML = `<p style="opacity:0.7;">No genre data.</p>`;
@@ -32,14 +48,34 @@ export function renderGenres(data, currentSelection) {
 
     out.innerHTML = `
     <div class="ws-genres-full">
-        <div class="ws-avg-header">
-            <div class="ws-avg-title">
+
+        <span 
+            class="ws-panel-help ws-help"
+            data-tooltip="This page shows you the most common genres in your selection. Note that Spotify does not always provide a genre and many are very broad.
+            
+            Concentration - How concentrated the selection is around its most frequent genres.
+
+            Top Genre - The most common genre and its percentage of the selection.
+
+            Dominance Gap - Percentage point difference between the top genre(s) and the next most common genre.
+
+            Avg Tracks / Genre - The average number of tracks that share a genre tag.
+
+            Multi-Genre Tracks - Percentage of tracks that are tagged with more than one genre.
+
+            Most Genre-Dense Track - The track with the most genre tags, and how many it has.
+            ">
+        Help
+        </span>
+        
+        <div class="ws-header">
+            <div class="ws-title">
                 Genre Diversity:
-                <span class="ws-avg-inline-number">${data.diversity_score}</span>
+                <span class="ws-title-number">${data.diversity_score}</span>
             </div>
 
-            <div class="ws-genres-header-row">
-                <div class="ws-genres-selection-left">
+            <div class="ws-subrow">
+                <div class="ws-selection">
                     ${
                         currentSelection === "combined"
                             ? `
@@ -55,9 +91,16 @@ export function renderGenres(data, currentSelection) {
                     }
                 </div>
 
-                <button id="genreChartToggle" class="ws-swap-btn">
-                    Swap Style
-                </button>
+                <div class="ws-controls-row">
+                    <button id="genreScopeToggle" class="ws-scope-btn">
+                        Top 10
+                    </button>
+
+                    <button id="genreChartToggle" class="ws-swap-btn">
+                        Swap Style
+                    </button>
+                </div>
+
             </div>
         </div>
 
@@ -65,24 +108,6 @@ export function renderGenres(data, currentSelection) {
             <div class="ws-genres-panel">
 
                 <div class="ws-genres-card ws-release-dominant">
-
-                        <span 
-                            class="ws-panel-help ws-help"
-                            data-tooltip="Conentration - How concentrated the selection is around its most frequent genres.
-
-                            Top Genre - The most common genre and its percentage of the selection.
-
-                            Dominance Gap - Percentage point difference between the top genre(s) and the next most common genre.
-
-                            Avg Tracks / Genre - The average number of tracks that share a genre tag.
-
-                            Multi-Genre Tracks - Percentage of tracks that are tagged with more than one genre.
-
-                            Most Genre-Dense Track - The track with the most genre tags, and how many it has.
-                            ">
-                        ?
-                        </span>
-
                     <div class="ws-genres-label">Concentration</div>
                     <div class="ws-genres-value">${data.concentration}</div>
                 </div>
@@ -143,23 +168,51 @@ export function renderGenres(data, currentSelection) {
     </div>
     `;
 
-    renderGenreChart(data);
+    renderGenreChart(data, out);
 
     const toggle = document.getElementById("genreChartToggle");
     if (toggle) {
         toggle.onclick = () => {
             currentGenreChartType =
                 currentGenreChartType === "bar" ? "treemap" : "bar";
-            renderGenreChart(data);
+
+            // 👇 update visibility here too
+            const scopeToggle = document.getElementById("genreScopeToggle");
+            if (scopeToggle) {
+                scopeToggle.style.display =
+                    currentGenreChartType === "bar" ? "none" : "inline-block";
+            }
+
+            renderGenreChart(data, out);
+        };
+    }
+
+    const scopeToggle = document.getElementById("genreScopeToggle");
+
+    if (scopeToggle) {
+        scopeToggle.style.display =
+            currentGenreChartType === "bar" ? "none" : "inline-block";
+    }
+
+    if (scopeToggle) {
+        scopeToggle.onclick = () => {
+            currentGenreScope =
+                currentGenreScope === "top_10" ? "all" : "top_10";
+
+            scopeToggle.textContent =
+                currentGenreScope === "top_10" ? "Top 10" : "All";
+
+            renderGenreChart(data, out);
         };
     }
 }
 
-function renderGenreChart(data) {
+function renderGenreChart(data, out) {
 
     clearChartInstance();
 
-    const canvas = document.getElementById("wsChart");
+    const canvas = out.querySelector("canvas");
+
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d");
@@ -168,9 +221,19 @@ function renderGenreChart(data) {
     const activeName = document.querySelector(".ws-genres-active-name");
     const activeMeta = document.querySelector(".ws-genres-active-meta");
 
-    const treeData = data.top_10.map(g => ({
+    const sourceData =
+        currentGenreChartType === "bar"
+            ? data.top_10
+            : (
+                currentGenreScope === "all"
+                    ? (data.display_genres || data.top_10)
+                    : data.top_10
+            );
+
+    const treeData = sourceData.map((g, i) => ({
         label: g.genre,
-        value: g.count
+        value: g.count,
+        color: getGradientColor(i, sourceData.length)
     }));
 
     function setActiveGenre(item) {
@@ -178,7 +241,7 @@ function renderGenreChart(data) {
 
         currentActiveGenreLabel = item.label;
 
-        const color = genreToColor(item.label);
+        const color = item.color;
 
         activeIcon.style.background = color;
         activeName.textContent = item.label;
@@ -200,7 +263,7 @@ function renderGenreChart(data) {
 
         const labels = treeData.map(a => a.label);
         const values = treeData.map(a => a.value);
-        const colors = labels.map(l => genreToColor(l));
+        const colors = treeData.map(d => d.color);
 
         const chart = new Chart(ctx, {
             type: "bar",
@@ -279,17 +342,8 @@ function renderGenreChart(data) {
                 hoverBorderColor: "#1DB954",
 
                 backgroundColor(context) {
-
-                    const raw = context?.raw;
-
-                    const label =
-                        raw?._data?.label ||
-                        raw?.g ||
-                        raw?.label;
-
-                    if (!label) return "#1DB954";
-
-                    return genreToColor(label);
+                    const i = context.dataIndex;
+                    return treeData[i]?.color || "#1DB954";
                 }
             }]
         },

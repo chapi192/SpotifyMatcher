@@ -137,9 +137,9 @@ function computeGenerationalLean(label, mode) {
     return "Gen Z";
 }
 
-export function renderReleaseYears(data, currentSelection) {
+export function renderReleaseYears(data, currentSelection, targetId = "wsAnalyticsOutput") {
 
-    const out = document.getElementById("wsAnalyticsOutput");
+    const out = document.getElementById(targetId);
 
     const existing = out.querySelector(".ws-release-full");
 
@@ -184,27 +184,29 @@ export function renderReleaseYears(data, currentSelection) {
     out.innerHTML = `
     <div class="ws-release-full">
 
-        <div class="ws-avg-header">
+        <span 
+            class="ws-panel-help ws-help"
+            data-tooltip="This page shows the release years of the tracks in your selection.
+            
+            Dominant Era - Most commonly appearing decade.
 
-            <span 
-                class="ws-panel-help ws-help"
-                data-tooltip="Dominant Era - Most commonly appearing decade.
+            Distribution - Concentration across decades. &quot;Precise&quot; means most tracks are from the same decade, while &quot;Diverse&quot; means tracks are spread out over many decades.
 
-                Distribution - Concentration across decades.
+            Generational Lean - Most represented generation of selection. &quot;Boomer&quot; pre-1980 tracks, &quot;Gen X&quot; 80s and 90s tracks, &quot;Millennial&quot; 2000s and 2010s tracks, and &quot;Gen Z&quot; 2020s tracks.
+            "
+        >
+        Help
+        </span>
 
-                Generational Lean - Most represented generation of selection."
-            >
-            ?
-            </span>
-
-            <div class="ws-avg-title">
+        <div class="ws-header">
+            <div class="ws-title">
                 Release Span:
-                <span class="ws-avg-inline-number">
+                <span class="ws-title-number">
                     ${data.oldest_year}-${data.newest_year}
                 </span>
             </div>
 
-            <div class="ws-avg-selection">
+            <div class="ws-selection">
                 ${
                     currentSelection === "combined"
                         ? `
@@ -329,14 +331,14 @@ export function renderReleaseYears(data, currentSelection) {
 function updateReleaseYearsView(data, currentSelection) {
 
     // Update header numbers
-    const spanEl = document.querySelector(".ws-avg-inline-number");
+    const spanEl = document.querySelector(".ws-title-number");
     if (spanEl) {
         spanEl.textContent = `${data.oldest_year}-${data.newest_year}`;
     }
 
     const { mode, labels, values } = buildTimeSeries(data);
 
-    const selectionEl = document.querySelector(".ws-avg-selection");
+    const selectionEl = document.querySelector(".ws-selection");
 
     if (selectionEl) {
 
