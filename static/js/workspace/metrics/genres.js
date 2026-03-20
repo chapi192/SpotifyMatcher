@@ -36,9 +36,9 @@ function getGradientColor(index, total) {
     return `hsl(${hue}, 65%, ${lightness}%)`;
 }
 
-export function renderGenres(data, currentSelection) {
+export function renderGenres(data, currentSelection, targetId = "wsAnalyticsOutput") {
 
-    const out = document.getElementById("wsAnalyticsOutput");
+    const out = document.getElementById(targetId);
 
     if (!data || !data.top_10) {
         out.innerHTML = `<p style="opacity:0.7;">No genre data.</p>`;
@@ -168,7 +168,7 @@ export function renderGenres(data, currentSelection) {
     </div>
     `;
 
-    renderGenreChart(data);
+    renderGenreChart(data, out);
 
     const toggle = document.getElementById("genreChartToggle");
     if (toggle) {
@@ -183,7 +183,7 @@ export function renderGenres(data, currentSelection) {
                     currentGenreChartType === "bar" ? "none" : "inline-block";
             }
 
-            renderGenreChart(data);
+            renderGenreChart(data, out);
         };
     }
 
@@ -202,16 +202,17 @@ export function renderGenres(data, currentSelection) {
             scopeToggle.textContent =
                 currentGenreScope === "top_10" ? "Top 10" : "All";
 
-            renderGenreChart(data);
+            renderGenreChart(data, out);
         };
     }
 }
 
-function renderGenreChart(data) {
+function renderGenreChart(data, out) {
 
     clearChartInstance();
 
-    const canvas = document.getElementById("wsChart");
+    const canvas = out.querySelector("canvas");
+
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d");

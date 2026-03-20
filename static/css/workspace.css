@@ -217,10 +217,10 @@
 
 .ws-sidebar-cover {
 
-    width: 52px;
-    height: 52px;
+    width: 60px;
+    height: 60px;
 
-    flex: 0 0 52px;
+    flex: 0 0 60px;
 
     overflow: hidden;
 }
@@ -1207,8 +1207,6 @@
     height: 64px;
 
     overflow: hidden;
-
-    transition: opacity 220ms ease;
 }
 
 .ws-album-active-img img {
@@ -1620,4 +1618,459 @@
     font-weight: 600;
 
     color: var(--accent-green);
+}
+
+/* ======================================================================
+   LANDING PAGE (UPDATED FOR NEW HTML STRUCTURE)
+====================================================================== */
+
+/* =========================
+   HERO
+========================= */
+
+.landing-page .landing-hero {
+    max-width: 1400px;
+    margin: 0 auto 0 auto;
+}
+
+.landing-page .landing-hero-title {
+    font-size: 64px;
+    font-weight: 800;
+    letter-spacing: -1.5px;
+    margin-bottom: 12px;
+}
+
+.landing-page .landing-hero-subtitle {
+    font-size: 18px;
+    opacity: 0.7;
+    max-width: 640px;
+}
+
+/* =========================
+   SECTION HEADER
+========================= */
+
+.landing-page .landing-header {
+    max-width: 1400px;
+    margin: 0 auto 36px auto;
+
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* small label */
+.landing-page .landing-tagline {
+    display: inline-block;
+
+    font-size: 13px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+
+    color: rgba(255,255,255,0.55);
+
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+    padding-bottom: 6px;
+}
+
+/* playlist / section title */
+.landing-page .landing-section-title {
+    font-size: 48px;
+    font-weight: 750;
+    letter-spacing: -1px;
+}
+
+/* subtitle */
+.landing-page .landing-section-subtitle {
+    font-size: 13px;
+    opacity: 0.65;
+}
+
+/* =========================
+   LAYOUT
+========================= */
+
+.landing-page .landing-decades-layout {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    gap: 14px;
+    align-items: center;
+
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* =========================
+   PLAYLIST LIST
+========================= */
+
+.landing-page .landing-playlist-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    width: 100%;
+}
+
+/* =========================
+   PLAYLIST CARDS (MATCH WS)
+========================= */
+
+.landing-page .playlist-card {
+    display: flex !important;        
+    flex-direction: row !important; 
+    align-items: center;
+
+    gap: 14px;
+    padding: 12px 14px;
+
+    width: 100%;      
+    min-width: 0;
+
+    box-sizing: border-box;
+
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+
+    cursor: pointer;
+
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease,
+        transform 0.15s ease;
+}
+
+.landing-page .playlist-card:hover {
+    background: rgba(255,255,255,0.04);
+}
+
+.landing-page .playlist-card.active {
+    border-color: rgba(29,185,84,0.75);
+    box-shadow: 0 0 10px rgba(29,185,84,0.35);
+}
+
+.landing-page .playlist-card img {
+    width: 64px;
+    height: 64px;
+
+    flex: 0 0 64px;  
+    object-fit: cover;
+
+    display: block;
+}
+
+/* text RIGHT */
+.landing-page .playlist-card-text {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex: 1;
+    gap: 4px;
+    min-width: 0;
+}
+
+.landing-page .playlist-card-name {
+    font-size: 14px;
+    font-weight: 600;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.landing-page .playlist-card-meta {
+    font-size: 12px;
+    opacity: 0.65;
+}
+
+/* =========================
+   CHART AREA
+========================= */
+
+.landing-page .landing-chart-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+
+    min-width: 0;
+}
+
+/* buttons */
+.landing-page .landing-chart-controls {
+    display: flex;
+    gap: 10px;
+}
+
+/* chart container */
+.landing-page .landing-chart-shell {
+    position: relative;
+
+    width: 100%;
+    width: 100%;
+    max-width: 1000px;   
+    margin: 0;
+
+    height: 542px;
+
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.015);
+
+    overflow: hidden;
+}
+
+/* chart sizing */
+.landing-page #decadeChart {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* =========================
+   BUTTONS
+========================= */
+
+.landing-page .chart-btn {
+    padding: 8px 14px;
+
+    border: 1px solid rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.03);
+
+    color: white;
+    cursor: pointer;
+
+    transition: all 0.18s ease;
+}
+
+.landing-page .chart-btn.active,
+.landing-page .chart-btn:disabled {
+    border-color: #1DB954;
+    color: #1DB954;
+    background: rgba(29,185,84,0.10);
+    cursor: default;
+}
+
+/* =========================
+   SECTION HEADER SYSTEM
+========================= */
+
+.landing-page .landing-header {
+    max-width: 1400px;
+    margin: 0 auto 36px auto;
+}
+
+/* container */
+.landing-page .landing-section-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* BIG section title (primary) */
+.landing-page .landing-section-main {
+    font-size: 40px;
+    font-weight: 750;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+
+    color: #ffffff;
+
+    border-bottom: 2px solid var(--accent-green);
+    padding-bottom: 10px;
+}
+
+/* playlist name */
+.landing-page .landing-section-title {
+    font-size: 22px;
+    font-weight: 650;
+}
+
+/* track count */
+.landing-page .landing-section-subtitle {
+    font-size: 15px;
+    color: rgba(255,255,255,0.7);
+}
+
+/* =========================
+   ARTIST SECTION LAYOUT
+========================= */
+
+.landing-page .landing-artist-layout {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr) 220px;
+    gap: 40px;
+
+    max-width: 1400px;
+    margin: 0 auto;
+
+    align-items: center;
+}
+
+/* LEFT PANEL */
+.landing-page .landing-artist-active {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;   
+    align-items: stretch;       
+    gap: 10px;
+    text-align: center;
+}
+
+/* IMAGE */
+.landing-page .landing-artist-active-img img {
+    width: 180px;
+    height: 180px;
+}
+
+.landing-page .landing-artist-active-name {
+    font-size: 24px;
+    font-weight: 600;
+    text-decoration: none;
+
+    color: var(--artistColor, #1DB954);
+}
+
+.landing-page .landing-artist-active-name:hover {
+    text-decoration: underline;
+}
+
+.landing-page .landing-artist-active-meta {
+    opacity: 0;
+}
+
+/* CENTER CHART */
+.landing-page .landing-artist-chart {
+    position: relative;
+    height: 500px;   /* 🔥 THIS is the key */
+}
+
+/* CANVAS (normal flow now) */
+.landing-page #landingRelationshipGraph {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* RIGHT PANEL */
+.landing-page .landing-artist-playlists {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* =========================
+   LANDING SHARED SECTION
+========================= */
+
+.landing-page .landing-section {
+    padding: 52px 0;
+}
+
+.landing-page .landing-cta-section {
+    padding-top: 2px;
+}
+
+/* =========================
+   DEMO GRAPH SECTION
+========================= */
+
+.landing-page .landing-graph-wrap {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    overflow: visible;
+}
+
+.landing-page .landing-graph-shell {
+    width: 100%;
+    max-width: 1400px;
+}
+
+.landing-rel-canvas-wrap {
+    width: 100%;
+    display: block;
+    margin: 0 auto;
+    overflow: visible;
+    position: relative;
+    z-index: 2;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+.landing-page #landingRelationshipCanvas {
+    display: block;
+    width: 100% !important;
+    height: auto !important;
+}
+
+/* =========================
+   DECADES CHART SECTION
+========================= */
+
+.landing-chart-area {
+    width: 100%;
+    min-width: 0;
+}
+
+.landing-chart-controls {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    gap: 8px;
+    z-index: 5;
+}
+
+#decadeChart {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* =========================
+   PLAYLIST LISTS
+========================= */
+
+.landing-page .landing-playlist-list,
+.landing-page .landing-artist-playlists {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+}
+
+/* =========================
+   CTA HEADER + BUTTON
+========================= */
+
+.landing-page .landing-cta-header {
+    position: relative;
+}
+
+.landing-page .landing-cta-header .landing-section-main {
+    padding-right: 220px; 
+}
+
+.landing-page .landing-cta-btn {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+
+    padding: 14px 28px;
+    font-size: 18px;
+    letter-spacing: 0.5px;
+
+    background: #1DB954;
+    color: #030814;
+
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+
+    transition: background 0.18s ease, transform 0.15s ease;
+}
+
+.landing-page .landing-cta-btn:hover {
+    background: #1ed760;
 }

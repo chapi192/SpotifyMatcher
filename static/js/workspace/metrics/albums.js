@@ -263,6 +263,8 @@ async function renderAlbumChart(data) {
     function setActiveAlbumFromItem(item, color, imgEl) {
         if (!item || !activeImg || !activeName || !activeMeta) return;
 
+        if (currentActiveAlbumLabel === item.label) return;
+
         currentActiveAlbumLabel = item.label;
                 
         activeImg.innerHTML = "";

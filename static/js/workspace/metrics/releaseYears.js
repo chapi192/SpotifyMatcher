@@ -137,9 +137,9 @@ function computeGenerationalLean(label, mode) {
     return "Gen Z";
 }
 
-export function renderReleaseYears(data, currentSelection) {
+export function renderReleaseYears(data, currentSelection, targetId = "wsAnalyticsOutput") {
 
-    const out = document.getElementById("wsAnalyticsOutput");
+    const out = document.getElementById(targetId);
 
     const existing = out.querySelector(".ws-release-full");
 

@@ -615,7 +615,7 @@ export function renderRelationships(data) {
             data-tooltip="This page shows you the connections between your selected playlists. The brighter an edge and the closer two playlist are, the more alike they are. Calculated using the weighted sliders. Hover and edge or a node for more info.
 
             Track - Tracks appearing in both playlists.
-            Duration - Playlist listen times.
+            Duration - Playlist listen time.
             ">
         Help
         </span>
@@ -790,8 +790,13 @@ export function renderRelationships(data) {
         restoreGraphState(nodes);
 
     if (!canRestoreLayout) {
+
         initializeNodePositions(nodes, width, height);
-        runLayout(nodes, getPositiveEdges(edges), width, height);
+
+        // 🔥 run layout multiple times BEFORE render
+        for (let i = 0; i < 3; i++) {
+            runLayout(nodes, getPositiveEdges(edges), width, height);
+        }
 
         zoom = 1;
         targetZoom = 1;
