@@ -25,7 +25,28 @@
                 <h3>Build reliable recording identities</h3>
                 <p id="enrichmentStatusText">Check the local catalog against MusicBrainz before importing acoustic features and community tags.</p>
             </div>
-            <button id="startEnrichmentBtn" class="btn" type="button">Match MusicBrainz</button>
+            <div class="enrichment-actions">
+                <label for="enrichmentBatchSize">Test batch</label>
+                <select id="enrichmentBatchSize" class="health-select">
+                    <option value="10">10 tracks</option>
+                    <option value="25" selected>25 tracks</option>
+                    <option value="50">50 tracks</option>
+                    <option value="100">100 tracks</option>
+                </select>
+                <button id="startEnrichmentBtn" class="btn" type="button">Match sample</button>
+            </div>
+        </section>
+        <section id="matchReview" class="match-review" hidden>
+            <div class="match-review-header">
+                <div><p class="health-kicker">Latest decisions</p><h3>MusicBrainz Match Review</h3></div>
+                <div class="match-legend"><span class="matched">Confident</span><span class="review">Review</span><span class="missing">Missing</span></div>
+            </div>
+            <div class="health-table-wrap">
+                <table class="health-table match-table">
+                    <thead><tr><th>Spotify track</th><th>Artist</th><th>Decision</th><th>Confidence</th><th>MusicBrainz candidate</th></tr></thead>
+                    <tbody id="matchReviewRows"></tbody>
+                </table>
+            </div>
         </section>
         <section class="health-summary" aria-label="Library health summary">
             <button class="health-stat active" data-panel="orphans">
@@ -168,6 +189,7 @@ async function refreshEnrichmentStatus() {
     const data = await response.json();
     const job = data.job;
     const counts = data.identity_counts;
+    renderMatchReview(data.recent_matches || []);
     const button = document.getElementById("startEnrichmentBtn");
     if (job?.status === "running") {
         button.disabled = true;
@@ -182,14 +204,17 @@ async function refreshEnrichmentStatus() {
         const summary = `${counts.matched.toLocaleString()} matched · ${counts.review.toLocaleString()} need review · ${counts.missing.toLocaleString()} not found`;
         document.getElementById("enrichmentStatusText").textContent = job?.status === "error"
             ? `Last match stopped: ${job.error}. Saved progress is intact. ${summary}` : summary;
-        button.textContent = counts.checked ? "Match remaining tracks" : "Match MusicBrainz";
+        button.textContent = counts.checked ? "Match another batch" : "Match sample";
     }
 }
 
 document.getElementById("startEnrichmentBtn").addEventListener("click", async () => {
     const button = document.getElementById("startEnrichmentBtn");
     button.disabled = true;
-    const response = await fetch("/api/enrichment/musicbrainz", {method: "POST"});
+    const limit = Number(document.getElementById("enrichmentBatchSize").value);
+    const response = await fetch("/api/enrichment/musicbrainz", {
+        method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({limit})
+    });
     const data = await response.json();
     if (!response.ok && response.status !== 409) {
         document.getElementById("enrichmentStatusText").textContent = data.error || "Could not start matching";
@@ -198,6 +223,21 @@ document.getElementById("startEnrichmentBtn").addEventListener("click", async ()
     }
     await refreshEnrichmentStatus();
 });
+
+function renderMatchReview(rows) {
+    const section = document.getElementById("matchReview");
+    section.hidden = rows.length === 0;
+    document.getElementById("matchReviewRows").innerHTML = rows.map(row => {
+        const candidate = row.candidates?.[0];
+        const confidence = row.confidence == null ? "—" : `${Math.round(row.confidence * 100)}%`;
+        const candidateText = candidate ? `${candidate.title || "Unknown"} — ${candidate.artists || "Unknown artist"}` : "No candidate found";
+        const mbid = row.musicbrainz_recording_id || candidate?.recording_id;
+        const candidateHtml = mbid
+            ? `<a href="https://musicbrainz.org/recording/${encodeURIComponent(mbid)}" target="_blank" rel="noopener">${escapeHealth(candidateText)}</a>`
+            : escapeHealth(candidateText);
+        return `<tr><td>${escapeHealth(row.name)}</td><td>${escapeHealth(row.artists)}</td><td><span class="match-status ${escapeHealth(row.match_status)}">${escapeHealth(row.match_status)}</span></td><td>${confidence}</td><td>${candidateHtml}</td></tr>`;
+    }).join("");
+}
 refreshEnrichmentStatus();
 </script>
 {% endblock %}

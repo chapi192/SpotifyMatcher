@@ -8,6 +8,21 @@
 .enrichment-panel h3 { margin: 0; font-size: 17px; }
 .enrichment-panel p:not(.health-kicker) { margin: 7px 0 0; color: #858e9d; font-size: 12px; }
 .enrichment-panel .btn:disabled { cursor: wait; opacity: .45; }
+.enrichment-actions { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.enrichment-actions label { color: #858e9d; font-size: 11px; text-transform: uppercase; }
+.health-select { padding: 6px 28px 6px 9px; border: 1px solid var(--surface-border); border-radius: 0; background: #081321; color: var(--text-main); }
+.match-review { margin-bottom: 14px; border: 1px solid var(--surface-border); background: var(--surface-bg); }
+.match-review-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; padding: 18px 20px; border-bottom: 1px solid var(--surface-border); }
+.match-review-header h3 { margin: 0; font-size: 17px; }
+.match-legend { display: flex; gap: 14px; color: #808997; font-size: 10px; text-transform: uppercase; }
+.match-legend span::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: currentColor; }
+.match-legend .matched, .match-status.matched { color: var(--accent-green); }
+.match-legend .review, .match-status.review { color: #f0ad4e; }
+.match-legend .missing, .match-status.missing { color: #df7777; }
+.match-status { font-size: 10px; font-weight: 600; letter-spacing: .7px; text-transform: uppercase; }
+.match-table { min-width: 900px; }
+.match-table th:first-child, .match-table td:first-child { width: 20%; }
+.match-table th:last-child, .match-table td:last-child { width: 30%; }
 .health-error { border-color: rgba(255, 95, 95, .45); color: #ff9a9a; }
 .health-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .health-stat { position: relative; min-height: 150px; padding: 20px; border: 1px solid var(--surface-border); background: var(--surface-bg); color: var(--text-main); text-align: left; cursor: pointer; }
@@ -44,6 +59,7 @@
     .health-catalog-strip div { border-right: 0; border-bottom: 1px solid var(--surface-border); }
     .health-heading, .health-detail-header { align-items: stretch; flex-direction: column; }
     .enrichment-panel { align-items: stretch; flex-direction: column; }
+    .enrichment-actions { align-items: stretch; flex-direction: column; }
     .health-search { box-sizing: border-box; width: 100%; }
     .health-table { min-width: 760px; }
 }

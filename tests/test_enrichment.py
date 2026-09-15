@@ -64,7 +64,7 @@ class EnrichmentCatalogTests(unittest.TestCase):
     def test_identity_and_job_progress_are_durable(self):
         candidates = catalog.enrichment_candidates("user-1")
         self.assertEqual(candidates[0]["isrc"], "USABC1234567")
-        job_id = catalog.begin_enrichment_job("user-1", "musicbrainz")
+        job_id = catalog.begin_enrichment_job("user-1", "musicbrainz", batch_limit=10)
         self.assertIsNotNone(job_id)
         self.assertIsNone(catalog.begin_enrichment_job("user-1", "musicbrainz"))
 
@@ -77,7 +77,9 @@ class EnrichmentCatalogTests(unittest.TestCase):
 
         status = catalog.enrichment_status("user-1")
         self.assertEqual(status["job"]["status"], "complete")
+        self.assertEqual(status["job"]["batch_limit"], 10)
         self.assertEqual(status["identity_counts"]["matched"], 1)
+        self.assertEqual(status["recent_matches"][0]["musicbrainz_recording_id"], "mbid-1")
         self.assertEqual(catalog.enrichment_candidates("user-1"), [])
 
 

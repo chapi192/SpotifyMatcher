@@ -1,7 +1,7 @@
 import threading
 import traceback
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Body, Request
 from fastapi.responses import JSONResponse
 
 from web.catalog import (
@@ -19,10 +19,10 @@ from web.spotify_auth import get_user_id
 router = APIRouter()
 
 
-def _run_musicbrainz_job(job_id: int, user_id: str) -> None:
+def _run_musicbrainz_job(job_id: int, user_id: str, batch_limit: int) -> None:
     completed = matched = review = missing = 0
     try:
-        candidates = enrichment_candidates(user_id)
+        candidates = enrichment_candidates(user_id, batch_limit)
         for index, track in enumerate(candidates):
             update_enrichment_job(job_id, current_track=track["name"] or track["track_id"])
             result = match_recording(track)
@@ -54,15 +54,19 @@ def _authenticated_user(request: Request):
 
 
 @router.post("/api/enrichment/musicbrainz")
-def start_musicbrainz_enrichment(request: Request):
+def start_musicbrainz_enrichment(request: Request, data: dict = Body(default={})):
     user_id = _authenticated_user(request)
     if not user_id:
         return JSONResponse({"error": "Not logged in"}, status_code=401)
-    job_id = begin_enrichment_job(user_id, "musicbrainz")
+    try:
+        batch_limit = max(1, min(int(data.get("limit", 25)), 100))
+    except (TypeError, ValueError):
+        return JSONResponse({"error": "Batch size must be a number from 1 to 100"}, status_code=400)
+    job_id = begin_enrichment_job(user_id, "musicbrainz", batch_limit)
     if job_id is None:
         return JSONResponse({"error": "MusicBrainz matching is already running"}, status_code=409)
     worker = threading.Thread(
-        target=_run_musicbrainz_job, args=(job_id, user_id), daemon=True,
+        target=_run_musicbrainz_job, args=(job_id, user_id, batch_limit), daemon=True,
         name=f"musicbrainz-enrichment-{job_id}",
     )
     worker.start()

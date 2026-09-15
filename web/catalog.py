@@ -166,6 +166,7 @@ def initialize_catalog() -> None:
                 user_id TEXT NOT NULL,
                 provider TEXT NOT NULL,
                 status TEXT NOT NULL,
+                batch_limit INTEGER,
                 started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 completed_at TEXT,
                 total_tracks INTEGER NOT NULL DEFAULT 0,
@@ -212,6 +213,10 @@ def initialize_catalog() -> None:
         track_columns = {row["name"] for row in db.execute("PRAGMA table_info(tracks)")}
         if "isrc" not in track_columns:
             db.execute("ALTER TABLE tracks ADD COLUMN isrc TEXT")
+
+        enrichment_columns = {row["name"] for row in db.execute("PRAGMA table_info(enrichment_jobs)")}
+        if "batch_limit" not in enrichment_columns:
+            db.execute("ALTER TABLE enrichment_jobs ADD COLUMN batch_limit INTEGER")
 
 
 
@@ -723,8 +728,9 @@ def library_health(user_id: str, detail_limit: int = 250) -> dict:
     }
 
 
-def begin_enrichment_job(user_id: str, provider: str) -> int | None:
+def begin_enrichment_job(user_id: str, provider: str, batch_limit: int = 25) -> int | None:
     initialize_catalog()
+    batch_limit = max(1, min(int(batch_limit), 100))
     with _DB_LOCK, closing(_connect()) as db, db:
         if db.execute(
             "SELECT 1 FROM enrichment_jobs WHERE user_id = ? AND provider = ? AND status = 'running'",
@@ -741,15 +747,17 @@ def begin_enrichment_job(user_id: str, provider: str) -> int | None:
             """,
             (user_id,),
         ).fetchone()[0]
+        total = min(total, batch_limit)
         cursor = db.execute(
-            "INSERT INTO enrichment_jobs (user_id, provider, status, total_tracks) VALUES (?, ?, 'running', ?)",
-            (user_id, provider, total),
+            "INSERT INTO enrichment_jobs (user_id, provider, status, total_tracks, batch_limit) VALUES (?, ?, 'running', ?, ?)",
+            (user_id, provider, total, batch_limit),
         )
         return int(cursor.lastrowid)
 
 
-def enrichment_candidates(user_id: str) -> list[dict]:
+def enrichment_candidates(user_id: str, limit: int | None = None) -> list[dict]:
     initialize_catalog()
+    limit = max(1, min(int(limit), 100)) if limit is not None else None
     with _DB_LOCK, closing(_connect()) as db, db:
         rows = db.execute(
             """
@@ -762,9 +770,10 @@ def enrichment_candidates(user_id: str) -> list[dict]:
             LEFT JOIN track_identities ti ON ti.track_id = t.track_id
             WHERE pt.user_id = ? AND p.is_active = 1
               AND (ti.track_id IS NULL OR ti.match_status IN ('pending', 'error'))
-            ORDER BY t.track_id
+            ORDER BY t.name COLLATE NOCASE, t.track_id
+            LIMIT COALESCE(?, -1)
             """,
-            (user_id,),
+            (user_id, limit),
         ).fetchall()
     return [dict(row) for row in rows]
 
@@ -827,7 +836,33 @@ def enrichment_status(user_id: str) -> dict:
             """,
             (user_id,),
         ).fetchone()
-    return {"job": dict(job) if job else None, "identity_counts": {key: counts[key] or 0 for key in counts.keys()}}
+        recent = db.execute(
+            """
+            SELECT ti.track_id, t.name, t.album_name, ti.musicbrainz_recording_id,
+                   ti.match_status, ti.match_method, ti.confidence, ti.candidates_json,
+                   ti.checked_at,
+                   COALESCE((SELECT GROUP_CONCAT(a.name, ', ') FROM track_artists ta
+                       JOIN artists a ON a.artist_id = ta.artist_id WHERE ta.track_id = ti.track_id), '') AS artists
+            FROM track_identities ti JOIN tracks t ON t.track_id = ti.track_id
+            WHERE EXISTS (
+                SELECT 1 FROM playlist_tracks pt
+                JOIN playlists p ON p.user_id = pt.user_id AND p.playlist_id = pt.playlist_id
+                WHERE pt.track_id = ti.track_id AND pt.user_id = ? AND p.is_active = 1
+            )
+            ORDER BY ti.checked_at DESC, t.name COLLATE NOCASE LIMIT 100
+            """,
+            (user_id,),
+        ).fetchall()
+    recent_matches = []
+    for row in recent:
+        item = dict(row)
+        item["candidates"] = json.loads(item.pop("candidates_json") or "[]")
+        recent_matches.append(item)
+    return {
+        "job": dict(job) if job else None,
+        "identity_counts": {key: counts[key] or 0 for key in counts.keys()},
+        "recent_matches": recent_matches,
+    }
 
 
 def save_selection(user_id: str, selected_ids: list[str], hidden_ids: list[str], breakdown_source: str | None) -> None:
