@@ -121,6 +121,43 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(changes["removed_tracks"], 1)
         self.assertIsNotNone(catalog.load_playlist_dataset("user-1", "old-playlist"))
 
+    def test_library_health_classifies_track_memberships(self):
+        def track(track_id, name):
+            return {
+                "track_id": track_id,
+                "track_name": name,
+                "spotify_url": f"https://open.spotify.com/track/{track_id}",
+                "album": {"album_name": "Album"},
+                "artists": [{"artist_id": "artist-1", "artist_name": "Artist"}],
+            }
+
+        catalog.save_playlist_dataset(
+            "user-1",
+            {"playlist_id": "__liked__", "playlist_name": "Liked Songs", "tracks": [
+                track("orphan", "Orphan"), track("shared", "Shared"),
+            ]},
+            metadata={"is_liked": True},
+        )
+        catalog.save_playlist_dataset(
+            "user-1",
+            {"playlist_id": "playlist-1", "playlist_name": "One", "tracks": [
+                track("shared", "Shared"), track("unliked", "Unliked"), track("duplicate", "Duplicate"),
+            ]},
+        )
+        catalog.save_playlist_dataset(
+            "user-1",
+            {"playlist_id": "playlist-2", "playlist_name": "Two", "tracks": [track("duplicate", "Duplicate")]},
+        )
+
+        report = catalog.library_health("user-1")
+
+        self.assertEqual(report["status"], "ready")
+        self.assertEqual(report["summary"]["orphan_liked"], 1)
+        self.assertEqual(report["summary"]["not_liked"], 2)
+        self.assertEqual(report["summary"]["duplicate_placements"], 1)
+        self.assertEqual(report["orphan_liked"][0]["track_id"], "orphan")
+        self.assertEqual(report["duplicate_placements"][0]["playlist_count"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()

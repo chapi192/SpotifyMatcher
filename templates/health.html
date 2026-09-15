@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/health.css') }}">
+{% endblock %}
+
+{% block content %}
+<main class="health-page">
+    <header class="health-heading">
+        <div>
+            <p class="health-kicker">Local catalog audit</p>
+            <h2>Library Health</h2>
+            <p class="health-intro">Organization signals calculated from your last sync. No Spotify requests are made here.</p>
+        </div>
+        <a class="btn health-sync-link" href="/dashboard">Sync settings</a>
+    </header>
+
+    <section id="healthLoading" class="health-state">Analyzing local library...</section>
+    <section id="healthError" class="health-state health-error" hidden></section>
+
+    <div id="healthContent" hidden>
+        <section class="health-summary" aria-label="Library health summary">
+            <button class="health-stat active" data-panel="orphans">
+                <span class="health-stat-label">Unfiled Liked Songs</span>
+                <strong id="orphanCount">0</strong>
+                <small>Liked, but in no other playlist</small>
+            </button>
+            <button class="health-stat" data-panel="unliked">
+                <span class="health-stat-label">Not Liked</span>
+                <strong id="unlikedCount">0</strong>
+                <small>Filed in playlists, absent from Liked Songs</small>
+            </button>
+            <button class="health-stat" data-panel="duplicates">
+                <span class="health-stat-label">Duplicate Placements</span>
+                <strong id="duplicateCount">0</strong>
+                <small>Tracks found in multiple playlists</small>
+            </button>
+        </section>
+
+        <section class="health-catalog-strip">
+            <div><span>Active playlists</span><strong id="activePlaylistCount">0</strong></div>
+            <div><span>Empty playlists</span><strong id="emptyPlaylistCount">0</strong></div>
+            <div><span>Largest playlist</span><strong><span id="largestPlaylistCount">0</span> tracks</strong></div>
+        </section>
+
+        <section class="health-detail">
+            <div class="health-detail-header">
+                <div>
+                    <p id="detailEyebrow" class="health-kicker">Needs a home</p>
+                    <h3 id="detailTitle">Unfiled Liked Songs</h3>
+                    <p id="detailDescription">These tracks are saved in Liked Songs but do not appear in another active playlist.</p>
+                </div>
+                <input id="healthSearch" class="health-search" type="search" placeholder="Filter tracks..." aria-label="Filter tracks">
+            </div>
+            <div class="health-table-wrap">
+                <table class="health-table">
+                    <thead><tr><th>Track</th><th>Artist</th><th>Album</th><th id="contextHeading">Status</th></tr></thead>
+                    <tbody id="healthRows"></tbody>
+                </table>
+                <div id="healthEmpty" class="health-empty" hidden>Nothing to review here.</div>
+            </div>
+            <p id="healthLimitNote" class="health-limit-note"></p>
+        </section>
+    </div>
+</main>
+
+<script>
+const healthPanels = {
+    orphans: {
+        key: "orphan_liked", count: "orphan_liked", eyebrow: "Needs a home",
+        title: "Unfiled Liked Songs",
+        description: "These tracks are saved in Liked Songs but do not appear in another active playlist.",
+        context: () => "Liked only", heading: "Status"
+    },
+    unliked: {
+        key: "not_liked", count: "not_liked", eyebrow: "Review your saves",
+        title: "Playlist Tracks Not Liked",
+        description: "These tracks are organized in a playlist but are absent from Liked Songs.",
+        context: () => "Playlist only", heading: "Status"
+    },
+    duplicates: {
+        key: "duplicate_placements", count: "duplicate_placements", eyebrow: "Placement overlap",
+        title: "Tracks in Multiple Playlists",
+        description: "These are not duplicate files; they are tracks placed in two or more active playlists.",
+        context: row => row.playlists || `${row.playlist_count} playlists`, heading: "Playlists"
+    }
+};
+
+let healthData = null;
+let activeHealthPanel = "orphans";
+
+function escapeHealth(value) {
+    return String(value ?? "").replace(/[&<>'"]/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[char]);
+}
+
+function renderHealthRows() {
+    const panel = healthPanels[activeHealthPanel];
+    const query = document.getElementById("healthSearch").value.trim().toLowerCase();
+    const rows = (healthData[panel.key] || []).filter(row =>
+        [row.name, row.artists, row.album_name, row.playlists].some(value => String(value || "").toLowerCase().includes(query))
+    );
+    const body = document.getElementById("healthRows");
+    body.innerHTML = rows.map(row => `
+        <tr>
+            <td><a href="${escapeHealth(row.spotify_url || '#')}" ${row.spotify_url ? 'target="_blank" rel="noopener"' : ''}>${escapeHealth(row.name || "Unknown track")}</a></td>
+            <td>${escapeHealth(row.artists)}</td>
+            <td>${escapeHealth(row.album_name || "Unknown album")}</td>
+            <td class="health-context">${escapeHealth(panel.context(row))}</td>
+        </tr>`).join("");
+    document.getElementById("healthEmpty").hidden = rows.length !== 0;
+    const total = healthData.summary[panel.count];
+    document.getElementById("healthLimitNote").textContent = total > healthData.detail_limit
+        ? `Showing the first ${healthData.detail_limit.toLocaleString()} of ${total.toLocaleString()} results.` : "";
+}
+
+function selectHealthPanel(name) {
+    activeHealthPanel = name;
+    const panel = healthPanels[name];
+    document.querySelectorAll(".health-stat").forEach(card => card.classList.toggle("active", card.dataset.panel === name));
+    document.getElementById("detailEyebrow").textContent = panel.eyebrow;
+    document.getElementById("detailTitle").textContent = panel.title;
+    document.getElementById("detailDescription").textContent = panel.description;
+    document.getElementById("contextHeading").textContent = panel.heading;
+    document.getElementById("healthSearch").value = "";
+    renderHealthRows();
+}
+
+async function loadHealth() {
+    try {
+        const response = await fetch("/api/health");
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not analyze library");
+        if (data.status === "sync_required") throw new Error("Sync Liked Songs before running the library health audit.");
+        healthData = data;
+        document.getElementById("orphanCount").textContent = data.summary.orphan_liked.toLocaleString();
+        document.getElementById("unlikedCount").textContent = data.summary.not_liked.toLocaleString();
+        document.getElementById("duplicateCount").textContent = data.summary.duplicate_placements.toLocaleString();
+        document.getElementById("activePlaylistCount").textContent = data.summary.active_playlists.toLocaleString();
+        document.getElementById("emptyPlaylistCount").textContent = data.summary.empty_playlists.toLocaleString();
+        document.getElementById("largestPlaylistCount").textContent = data.summary.largest_playlist.toLocaleString();
+        document.getElementById("healthLoading").hidden = true;
+        document.getElementById("healthContent").hidden = false;
+        selectHealthPanel("orphans");
+    } catch (error) {
+        document.getElementById("healthLoading").hidden = true;
+        const element = document.getElementById("healthError");
+        element.textContent = error.message;
+        element.hidden = false;
+    }
+}
+
+document.querySelectorAll(".health-stat").forEach(card => card.addEventListener("click", () => selectHealthPanel(card.dataset.panel)));
+document.getElementById("healthSearch").addEventListener("input", renderHealthRows);
+loadHealth();
+</script>
+{% endblock %}

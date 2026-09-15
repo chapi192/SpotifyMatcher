@@ -515,6 +515,146 @@ def sync_history(user_id: str, limit: int = 10) -> list[dict]:
     return [dict(row) for row in rows]
 
 
+def library_health(user_id: str, detail_limit: int = 250) -> dict:
+    """Analyze active local playlist memberships without contacting Spotify."""
+    initialize_catalog()
+    detail_limit = max(1, min(int(detail_limit), 1000))
+    with _DB_LOCK, closing(_connect()) as db, db:
+        base = """
+            SELECT t.track_id, t.name, t.spotify_url, t.album_name,
+                   COALESCE((
+                       SELECT GROUP_CONCAT(a.name, ', ')
+                       FROM track_artists ta JOIN artists a ON a.artist_id = ta.artist_id
+                       WHERE ta.track_id = t.track_id
+                       ORDER BY ta.position
+                   ), 'Unknown artist') AS artists
+            FROM tracks t
+        """
+        liked_exists = db.execute(
+            "SELECT 1 FROM playlists WHERE user_id = ? AND playlist_id = '__liked__' AND is_active = 1",
+            (user_id,),
+        ).fetchone() is not None
+
+        orphan_count = db.execute(
+            """
+            SELECT COUNT(DISTINCT liked.track_id)
+            FROM playlist_tracks liked
+            JOIN playlists lp ON lp.user_id = liked.user_id AND lp.playlist_id = liked.playlist_id
+            WHERE liked.user_id = ? AND lp.is_liked = 1 AND lp.is_active = 1
+              AND NOT EXISTS (
+                  SELECT 1 FROM playlist_tracks other
+                  JOIN playlists op ON op.user_id = other.user_id AND op.playlist_id = other.playlist_id
+                  WHERE other.user_id = liked.user_id AND other.track_id = liked.track_id
+                    AND op.is_active = 1 AND op.is_liked = 0
+              )
+            """,
+            (user_id,),
+        ).fetchone()[0]
+        orphans = db.execute(
+            base + """
+            WHERE EXISTS (
+                SELECT 1 FROM playlist_tracks liked
+                JOIN playlists lp ON lp.user_id = liked.user_id AND lp.playlist_id = liked.playlist_id
+                WHERE liked.user_id = ? AND liked.track_id = t.track_id
+                  AND lp.is_liked = 1 AND lp.is_active = 1
+            ) AND NOT EXISTS (
+                SELECT 1 FROM playlist_tracks other
+                JOIN playlists op ON op.user_id = other.user_id AND op.playlist_id = other.playlist_id
+                WHERE other.user_id = ? AND other.track_id = t.track_id
+                  AND op.is_active = 1 AND op.is_liked = 0
+            ) ORDER BY t.name COLLATE NOCASE LIMIT ?
+            """,
+            (user_id, user_id, detail_limit),
+        ).fetchall()
+
+        unliked_count = db.execute(
+            """
+            SELECT COUNT(DISTINCT pt.track_id)
+            FROM playlist_tracks pt
+            JOIN playlists p ON p.user_id = pt.user_id AND p.playlist_id = pt.playlist_id
+            WHERE pt.user_id = ? AND p.is_active = 1 AND p.is_liked = 0
+              AND NOT EXISTS (
+                  SELECT 1 FROM playlist_tracks liked
+                  JOIN playlists lp ON lp.user_id = liked.user_id AND lp.playlist_id = liked.playlist_id
+                  WHERE liked.user_id = pt.user_id AND liked.track_id = pt.track_id
+                    AND lp.is_active = 1 AND lp.is_liked = 1
+              )
+            """,
+            (user_id,),
+        ).fetchone()[0]
+        unliked = db.execute(
+            base + """
+            WHERE EXISTS (
+                SELECT 1 FROM playlist_tracks pt
+                JOIN playlists p ON p.user_id = pt.user_id AND p.playlist_id = pt.playlist_id
+                WHERE pt.user_id = ? AND pt.track_id = t.track_id
+                  AND p.is_active = 1 AND p.is_liked = 0
+            ) AND NOT EXISTS (
+                SELECT 1 FROM playlist_tracks liked
+                JOIN playlists lp ON lp.user_id = liked.user_id AND lp.playlist_id = liked.playlist_id
+                WHERE liked.user_id = ? AND liked.track_id = t.track_id
+                  AND lp.is_active = 1 AND lp.is_liked = 1
+            ) ORDER BY t.name COLLATE NOCASE LIMIT ?
+            """,
+            (user_id, user_id, detail_limit),
+        ).fetchall()
+
+        duplicate_count = db.execute(
+            """
+            SELECT COUNT(*) FROM (
+                SELECT pt.track_id
+                FROM playlist_tracks pt
+                JOIN playlists p ON p.user_id = pt.user_id AND p.playlist_id = pt.playlist_id
+                WHERE pt.user_id = ? AND p.is_active = 1 AND p.is_liked = 0
+                GROUP BY pt.track_id HAVING COUNT(DISTINCT pt.playlist_id) > 1
+            )
+            """,
+            (user_id,),
+        ).fetchone()[0]
+        duplicates = db.execute(
+            """
+            SELECT t.track_id, t.name, t.spotify_url, t.album_name,
+                   COALESCE((SELECT GROUP_CONCAT(a.name, ', ') FROM track_artists ta
+                       JOIN artists a ON a.artist_id = ta.artist_id WHERE ta.track_id = t.track_id), 'Unknown artist') AS artists,
+                   COUNT(DISTINCT pt.playlist_id) AS playlist_count,
+                   GROUP_CONCAT(DISTINCT p.name) AS playlists
+            FROM tracks t
+            JOIN playlist_tracks pt ON pt.track_id = t.track_id
+            JOIN playlists p ON p.user_id = pt.user_id AND p.playlist_id = pt.playlist_id
+            WHERE pt.user_id = ? AND p.is_active = 1 AND p.is_liked = 0
+            GROUP BY t.track_id HAVING COUNT(DISTINCT pt.playlist_id) > 1
+            ORDER BY playlist_count DESC, t.name COLLATE NOCASE LIMIT ?
+            """,
+            (user_id, detail_limit),
+        ).fetchall()
+
+        playlist_stats = db.execute(
+            """
+            SELECT COUNT(*) AS active_playlists,
+                   SUM(CASE WHEN track_total = 0 THEN 1 ELSE 0 END) AS empty_playlists,
+                   MAX(track_total) AS largest_playlist
+            FROM playlists WHERE user_id = ? AND is_active = 1 AND is_liked = 0
+            """,
+            (user_id,),
+        ).fetchone()
+
+    return {
+        "status": "ready" if liked_exists else "sync_required",
+        "detail_limit": detail_limit,
+        "summary": {
+            "orphan_liked": orphan_count,
+            "not_liked": unliked_count,
+            "duplicate_placements": duplicate_count,
+            "active_playlists": playlist_stats["active_playlists"] or 0,
+            "empty_playlists": playlist_stats["empty_playlists"] or 0,
+            "largest_playlist": playlist_stats["largest_playlist"] or 0,
+        },
+        "orphan_liked": [dict(row) for row in orphans],
+        "not_liked": [dict(row) for row in unliked],
+        "duplicate_placements": [dict(row) for row in duplicates],
+    }
+
+
 def save_selection(user_id: str, selected_ids: list[str], hidden_ids: list[str], breakdown_source: str | None) -> None:
     initialize_catalog()
     with _DB_LOCK, closing(_connect()) as db, db:

@@ -1,0 +1,44 @@
+.health-page { max-width: 1320px; margin: 0 auto; padding: 8px 0 60px; }
+.health-heading { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; margin: 8px 0 28px; }
+.health-kicker { margin: 0 0 7px; color: var(--accent-green); font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; }
+.health-intro, .health-detail-header p { color: var(--text-muted, #8b94a3); max-width: 680px; line-height: 1.55; }
+.health-sync-link { text-decoration: none; white-space: nowrap; }
+.health-state { padding: 48px; border: 1px solid var(--surface-border); background: var(--surface-bg); text-align: center; color: #a4acb9; }
+.health-error { border-color: rgba(255, 95, 95, .45); color: #ff9a9a; }
+.health-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.health-stat { position: relative; min-height: 150px; padding: 20px; border: 1px solid var(--surface-border); background: var(--surface-bg); color: var(--text-main); text-align: left; cursor: pointer; }
+.health-stat::after { content: ""; position: absolute; left: 0; right: 100%; bottom: -1px; height: 2px; background: var(--accent-green); transition: right .2s ease; }
+.health-stat:hover, .health-stat.active { border-color: var(--accent-green-soft); background: rgba(12, 25, 38, .92); }
+.health-stat.active::after { right: 0; }
+.health-stat-label { display: block; color: #9aa2af; font-size: 12px; font-weight: 600; letter-spacing: .7px; text-transform: uppercase; }
+.health-stat strong { display: block; margin: 12px 0 7px; color: var(--accent-green); font-size: 38px; line-height: 1; }
+.health-stat small { color: #7d8795; line-height: 1.4; }
+.health-catalog-strip { display: grid; grid-template-columns: repeat(3, 1fr); margin: 14px 0 28px; border: 1px solid var(--surface-border); background: rgba(7, 16, 27, .7); }
+.health-catalog-strip div { display: flex; justify-content: space-between; gap: 20px; padding: 14px 18px; border-right: 1px solid var(--surface-border); }
+.health-catalog-strip div:last-child { border-right: 0; }
+.health-catalog-strip span { color: #858e9d; font-size: 12px; }
+.health-catalog-strip strong { font-size: 13px; }
+.health-detail { border: 1px solid var(--surface-border); background: var(--surface-bg); }
+.health-detail-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; padding: 22px 24px; border-bottom: 1px solid var(--surface-border); }
+.health-detail-header h3 { margin: 0; font-size: 24px; }
+.health-detail-header p:not(.health-kicker) { margin: 8px 0 0; font-size: 13px; }
+.health-search { width: 260px; padding: 10px 12px; border: 1px solid var(--surface-border); border-radius: 0; outline: 0; background: rgba(4, 11, 20, .8); color: var(--text-main); }
+.health-search:focus { border-color: var(--accent-green); }
+.health-table-wrap { overflow-x: auto; }
+.health-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.health-table th { padding: 12px 16px; color: #737e8e; font-size: 10px; letter-spacing: 1px; text-align: left; text-transform: uppercase; }
+.health-table td { padding: 13px 16px; border-top: 1px solid rgba(255,255,255,.055); color: #aab2bf; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.health-table th:first-child, .health-table td:first-child { width: 25%; }
+.health-table th:last-child, .health-table td:last-child { width: 30%; }
+.health-table a { color: #e4e8ee; font-weight: 600; text-decoration: none; }
+.health-table a:hover { color: var(--accent-green); }
+.health-context { color: var(--accent-green) !important; }
+.health-empty { padding: 46px; border-top: 1px solid var(--surface-border); color: #818b99; text-align: center; }
+.health-limit-note { margin: 0; padding: 10px 16px; color: #747e8d; font-size: 11px; }
+@media (max-width: 800px) {
+    .health-summary, .health-catalog-strip { grid-template-columns: 1fr; }
+    .health-catalog-strip div { border-right: 0; border-bottom: 1px solid var(--surface-border); }
+    .health-heading, .health-detail-header { align-items: stretch; flex-direction: column; }
+    .health-search { box-sizing: border-box; width: 100%; }
+    .health-table { min-width: 760px; }
+}

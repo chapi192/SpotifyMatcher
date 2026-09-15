@@ -41,10 +41,12 @@ home server. Spotify Development Mode is sufficient for this use case.
 
 ## Phase 2: library health and audit
 
-- [ ] Dashboard for duplicate tracks, alternate releases/remasters, unavailable
-  tracks, empty playlists, and unusually large playlists.
-- [ ] Identify Liked Songs that are not in an owned playlist ("orphans").
-- [ ] Identify playlist tracks that are not in Liked Songs.
+- [x] Add a local, read-only Library Health dashboard with searchable audit
+  results and basic playlist-size statistics.
+- [x] Identify Liked Songs that are not in another active playlist ("orphans").
+- [x] Identify playlist tracks that are not in Liked Songs.
+- [x] Identify tracks placed in multiple active playlists.
+- [ ] Detect alternate releases/remasters and unavailable tracks.
 - [ ] Rank playlist overlap and suggest merge/split candidates.
 - [ ] Show stale playlists and how each playlist changed between snapshots.
 - [ ] Add filters and exportable reports.

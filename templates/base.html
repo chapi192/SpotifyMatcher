@@ -29,6 +29,7 @@
     <div class="nav-links">
         {% if request.session.get("token_info") %}
             <a href="/dashboard">Playlists</a> <!-- Dashboard -->
+            <a href="/health">Library Health</a>
             <a id="navWorkspace" class="nav-disabled" href="/workspace">Insights</a>
             <!-- <a id="navRecommendations" class="nav-disabled" href="/recommendations">Recommendations</a> -->
             <a href="/logout" onclick="handleLogout()">Logout</a>

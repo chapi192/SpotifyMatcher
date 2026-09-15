@@ -24,6 +24,13 @@ def workspace(request: Request):
     return templates.TemplateResponse("workspace.html", {"request": request})
 
 
+@router.get("/health", response_class=HTMLResponse)
+def health(request: Request):
+    if not request.session.get("token_info"):
+        return RedirectResponse("/login")
+    return templates.TemplateResponse("health.html", {"request": request})
+
+
 @router.get("/recommendations", response_class=HTMLResponse)
 def recommendations(request: Request):
     if not request.session.get("token_info"):
