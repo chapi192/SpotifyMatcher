@@ -27,31 +27,37 @@ def _hydrate_artists(sp, artist_ids, artist_cache):
     if not artist_ids:
         return
 
-    artist_list = list(artist_ids)
+    # Spotify removed batch artist fetching from Development Mode in 2026.
+    # Keep this deliberately sequential; the cache prevents repeated calls and
+    # the conservative pace avoids turning a large playlist into a rate spike.
+    for artist_id in artist_ids:
+        artist = safe_spotify_call(sp.artist, artist_id)
+        if not artist:
+            continue
 
-    for i in range(0, len(artist_list), 50):
-        batch = artist_list[i:i + 50]
-        artist_results = safe_spotify_call(sp.artists, batch)
+        aid = artist.get("id")
+        if not aid:
+            continue
 
-        for artist in (artist_results.get("artists") or []):
-            if not artist:
-                continue
+        images = artist.get("images") or []
+        image_url = images[0]["url"] if images else None
 
-            aid = artist.get("id")
-            if not aid:
-                continue
+        artist_cache[aid] = {
+            "genres": [format_genre(g) for g in (artist.get("genres") or [])],
+            "image_url": image_url
+        }
 
-            images = artist.get("images") or []
-            image_url = images[0]["url"] if images else None
 
-            artist_cache[aid] = {
-                "genres": [format_genre(g) for g in (artist.get("genres") or [])],
-                "image_url": image_url
-            }
+def _playlist_container(playlist):
+    return playlist.get("items") or playlist.get("tracks") or {}
+
+
+def _playlist_entry_track(entry):
+    return entry.get("item") or entry.get("track")
 
 def _append_tracks_from_page(page_items, playlist_tracks, artist_cache):
     for item in page_items:
-        track = item.get("track")
+        track = _playlist_entry_track(item)
         if not track:
             continue
 
@@ -117,24 +123,21 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None, ca
         results = safe_spotify_call(sp.current_user_saved_tracks, limit=50)
 
     else:
-        playlist_meta = safe_spotify_call(
-            sp.playlist,
-            pid,
-            fields="id,name,images,tracks.total"
-        )
+        playlist_meta = safe_spotify_call(sp.playlist, pid)
 
         playlist_name = playlist_meta["name"]
-        playlist_total_tracks = playlist_meta["tracks"]["total"]
+        playlist_total_tracks = _playlist_container(playlist_meta).get("total", 0)
 
         playlist_image = None
         if playlist_meta.get("images"):
             playlist_image = playlist_meta["images"][0]["url"]
 
+        # Spotipy 2.x names this helper after the old endpoint. New Development
+        # Mode uses /items, so call the path directly and parse both schemas.
         results = safe_spotify_call(
-            sp.playlist_items,
-            pid,
-            limit=100,
-            fields="items(track(id,name,popularity,duration_ms,explicit,track_number,disc_number,preview_url,external_urls,album(id,name,release_date,total_tracks),artists(id,name))),next"
+            sp._get,
+            f"playlists/{pid}/items",
+            limit=50,
         )
 
     while True:
@@ -150,7 +153,7 @@ def fetch_single_playlist(sp, pid, artist_cache=None, progress_callback=None, ca
         page_artist_ids = set()
 
         for item in page_items:
-            track = item.get("track")
+            track = _playlist_entry_track(item)
             if not track:
                 continue
 

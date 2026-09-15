@@ -1,0 +1,91 @@
+# WrappedNow: Local-First Music Library Workbench
+
+WrappedNow is becoming a personal music-library database and organization
+workbench. Spotify is an import and write-back provider; the local database is
+the durable source for analysis, history, custom organization, and proposed
+changes.
+
+The primary target is one owner running the application locally or on a private
+home server. Spotify Development Mode is sufficient for this use case.
+
+## Product principles
+
+- Keep a durable local copy of normalized library metadata.
+- Never make destructive Spotify changes without a preview and confirmation.
+- Record enough information to explain and undo every write-back operation.
+- Prefer deterministic analysis; use AI for language, classification, and
+  explanations rather than as the source of truth.
+- Keep provider-specific code behind a normalization boundary so another music
+  source can be added later.
+
+## Phase 1: durable personal synchronization
+
+- [x] Add a local SQLite catalog.
+- [x] Persist normalized playlists, tracks, artists, album metadata, ordering,
+  and sync timestamps when a selected playlist is loaded.
+- [x] Restore persisted playlist datasets after a server restart.
+- [x] Accept both Spotify's old `tracks/track` and 2026 `items/item` shapes.
+- [x] Replace removed batch artist hydration with individual cached requests.
+- [ ] Add an explicit "Sync library" screen and sync all owned/collaborative
+  playlists without requiring dashboard selection.
+- [ ] Record sync runs, failures, additions, removals, and moves as historical
+  events instead of only retaining the latest state.
+- [ ] Move OAuth tokens out of the signed browser cookie into server-side
+  storage.
+- [ ] Replace process-local job state with a persistent job table or Redis.
+- [ ] Add retry ceilings and clear errors for quota exhaustion versus temporary
+  Spotify rate limiting.
+
+## Phase 2: library health and audit
+
+- [ ] Dashboard for duplicate tracks, alternate releases/remasters, unavailable
+  tracks, empty playlists, and unusually large playlists.
+- [ ] Identify Liked Songs that are not in an owned playlist ("orphans").
+- [ ] Identify playlist tracks that are not in Liked Songs.
+- [ ] Rank playlist overlap and suggest merge/split candidates.
+- [ ] Show stale playlists and how each playlist changed between snapshots.
+- [ ] Add filters and exportable reports.
+
+## Phase 3: organization workspace
+
+- [ ] Add local tags, notes, collection groups, and rule-based smart collections.
+- [ ] Add a review queue for ambiguous tracks.
+- [ ] Preview playlist create/add/remove/reorder/rename operations.
+- [ ] Store an undo manifest before every Spotify write.
+- [ ] Require explicit confirmation before write-back.
+- [ ] Support restoring a playlist from a historical snapshot.
+
+## Phase 4: placement and recommendation engine
+
+- [ ] Recommend existing destinations for newly liked or unfiled tracks.
+- [ ] Score matches using artists, albums, genres/tags, era, and the owner's
+  previous filing decisions.
+- [ ] Explain every recommendation and expose the signals and weights.
+- [ ] Detect coherent clusters that justify a new playlist.
+- [ ] Learn local preferences from accepted/rejected suggestions without
+  training on or redistributing Spotify content.
+
+## Phase 5: optional AI assistant
+
+- [ ] Translate natural-language requests into read-only catalog queries.
+- [ ] Generate playlist/cluster names and short explanations.
+- [ ] Propose organization plans as structured, reviewable operations.
+- [ ] Support either a hosted model or a local model; send compact metadata
+  summaries rather than OAuth tokens or the entire database.
+- [ ] Keep AI-triggered Spotify writes disabled until the normal preview,
+  confirmation, and undo workflow exists.
+
+## Operations and home-server deployment
+
+- [x] Make debug mode and secure-cookie behavior environment configurable.
+- [x] Document local startup and environment variables.
+- [ ] Add a health endpoint and structured application logging.
+- [ ] Add database backup/restore commands.
+- [ ] Add a Dockerfile and Compose configuration for the home server.
+- [ ] Put the app behind a TLS reverse proxy and restrict it to the LAN, VPN, or
+  an authenticated gateway.
+- [ ] Add CSRF protection for every state-changing application endpoint.
+- [ ] Add an application-level owner login if the server is reachable outside
+  the trusted network.
+- [ ] Add automated database and synchronization tests.
+

@@ -4,8 +4,15 @@ from web.utils.debug import build_debug
 from web.spotify_auth import get_spotify_client, build_oauth
 from web.state import PLAYLIST_CACHE, PLAYLIST_DATA_CACHE, BUILD_STATE, USER_BUILD_STATE
 from web.routes.build import start_incremental_build
+from web.catalog import load_playlist_dataset
+from web.services.profile_library import build_playlist_profiles
 
 router = APIRouter()
+
+
+def _playlist_track_total(playlist):
+    container = playlist.get("items") or playlist.get("tracks") or {}
+    return container.get("total", 0)
 
 @router.get("/api/playlists")
 def api_playlists(request: Request):
@@ -29,7 +36,7 @@ def api_playlists(request: Request):
             playlists.append({
                 "id": p["id"],
                 "name": p["name"],
-                "track_count": p["tracks"]["total"],
+                "track_count": _playlist_track_total(p),
                 "image": p["images"][0]["url"] if p.get("images") else None,
                 "is_owner": p["owner"]["id"] == user_id
             })
@@ -121,6 +128,21 @@ def update_selection(request: Request, data: dict = Body(...)):
 
         user_cache = PLAYLIST_DATA_CACHE.get(user_id, {})
 
+        for pid in selected_ids:
+            if pid in user_cache:
+                continue
+            persisted = load_playlist_dataset(user_id, pid)
+            if not persisted:
+                continue
+            profile = build_playlist_profiles({pid: persisted}).get(pid)
+            PLAYLIST_DATA_CACHE.setdefault(user_id, {})[pid] = {
+                "dataset": persisted,
+                "profile": profile,
+                "fetched_at": 0,
+            }
+
+        user_cache = PLAYLIST_DATA_CACHE.get(user_id, {})
+
         existing_state = USER_BUILD_STATE.get(user_id)
 
         tracked = set()
@@ -165,8 +187,8 @@ def update_selection(request: Request, data: dict = Body(...)):
                                 meta = sp.current_user_saved_tracks(limit=1)
                                 tracks = meta["total"]
                             else:
-                                pl = sp.playlist(pid, fields="name,tracks.total")
-                                tracks = pl["tracks"]["total"]
+                                pl = sp.playlist(pid)
+                                tracks = _playlist_track_total(pl)
 
                             track_lookup[pid] = tracks
 
@@ -189,8 +211,8 @@ def update_selection(request: Request, data: dict = Body(...)):
                             meta = sp.current_user_saved_tracks(limit=1)
                             tracks = meta["total"]
                         else:
-                            pl = sp.playlist(pid, fields="name,tracks.total")
-                            tracks = pl["tracks"]["total"]
+                            pl = sp.playlist(pid)
+                            tracks = _playlist_track_total(pl)
 
                         track_lookup[pid] = tracks
 

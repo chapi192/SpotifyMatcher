@@ -6,16 +6,12 @@ from fastapi import Request
 
 SCOPES = [
     "user-read-private",
-    "user-read-email",
     "playlist-read-private",
     "playlist-read-collaborative",
     "user-library-read",
-    "playlist-modify-private",
-    "playlist-modify-public",
-    "user-library-modify",
 ]
 
-def build_oauth(request: Request):
+def build_oauth(request: Request, state: str | None = None):
     redirect_uri = os.getenv("SPOTIFY_REDIRECT_URI") or str(request.url_for("callback")).replace("http://", "https://")
 
     return SpotifyOAuth(
@@ -23,6 +19,7 @@ def build_oauth(request: Request):
         client_secret=os.getenv("SPOTIFY_CLIENT_SECRET"),
         redirect_uri=redirect_uri,
         scope=" ".join(SCOPES),
+        state=state,
         show_dialog=True,
         cache_handler=None
     )

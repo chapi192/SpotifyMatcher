@@ -8,6 +8,7 @@ from web.spotify_auth import get_spotify_client, build_oauth
 from web.state import BUILD_STATE, PLAYLIST_CACHE, USER_BUILD_STATE, PLAYLIST_DATA_CACHE, ARTIST_CACHE
 from web.services.fetch_data import fetch_single_playlist
 from web.services.profile_library import build_playlist_profiles
+from web.catalog import save_playlist_dataset
 
 router = APIRouter()
 
@@ -143,6 +144,7 @@ def start_incremental_build(request: Request, user_id: str, version: int):
 
                 single_dataset = {pid: playlist_dataset}
                 profile = build_playlist_profiles(single_dataset).get(pid)
+                save_playlist_dataset(user_id, playlist_dataset)
 
                 PLAYLIST_DATA_CACHE.setdefault(user_id, {})
                 PLAYLIST_DATA_CACHE[user_id][pid] = {

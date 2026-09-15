@@ -33,6 +33,9 @@ tracks.json
 
 # Data exports
 data/raw/
+data/*.sqlite3
+data/*.sqlite3-shm
+data/*.sqlite3-wal
 dump_project.py
 PROJECT_ARCHITECTURE_DUMP.txt
 

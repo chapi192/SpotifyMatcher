@@ -1087,11 +1087,11 @@ async def album_images(request: Request):
     if not sp:
         return {"albums": []}
 
-    results = safe_spotify_call(sp.albums, ids)
-
     out = []
 
-    for album in results.get("albums", []):
+    # Batch album lookup was removed from Spotify Development Mode in 2026.
+    for album_id in dict.fromkeys(ids):
+        album = safe_spotify_call(sp.album, album_id)
         if not album:
             continue
 
