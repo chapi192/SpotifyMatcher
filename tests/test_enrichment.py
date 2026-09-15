@@ -6,6 +6,7 @@ from unittest.mock import Mock, patch
 
 from web import catalog
 from web.services.musicbrainz import _search_title, match_recording
+from web.services import feature_providers
 
 
 class MusicBrainzTests(unittest.TestCase):
@@ -123,6 +124,48 @@ class EnrichmentCatalogTests(unittest.TestCase):
         self.assertEqual(status["recent_matches"][0]["musicbrainz_recording_id"], "mbid-1")
         self.assertEqual(status["recent_matches"][0]["decision_reason"], "Accepted test identity.")
         self.assertEqual(catalog.enrichment_candidates("user-1"), [])
+
+        catalog.save_provider_result("track-1", "listenbrainz", "complete", [
+            {"name": "tags", "value": [{"name": "rock", "count": 4}]},
+        ])
+        comparison = catalog.feature_comparison("user-1")
+        self.assertEqual(comparison[0]["providers"]["listenbrainz"]["features"]["tags"]["value"][0]["name"], "rock")
+        self.assertEqual(catalog.feature_enrichment_candidates("user-1", "listenbrainz"), [])
+
+
+class FeatureProviderTests(unittest.TestCase):
+    @patch("web.services.feature_providers._get_optional")
+    def test_acousticbrainz_normalizes_selected_features(self, get):
+        get.side_effect = [
+            {"highlevel": {"mood_happy": {"value": "happy", "probability": 0.8}}},
+            {"rhythm": {"bpm": 120.5}, "tonal": {"key_key": "C", "key_scale": "major"}, "lowlevel": {"dynamic_complexity": 4.2}},
+        ]
+        observations = feature_providers.acousticbrainz({"musicbrainz_recording_id": "mbid"})
+        values = {item["name"]: item["value"] for item in observations}
+        self.assertEqual(values["mood_happy"], "happy")
+        self.assertEqual(values["bpm"], 120.5)
+        self.assertEqual(values["key"], "C")
+
+    @patch("web.services.feature_providers._get")
+    def test_listenbrainz_combines_and_ranks_tags(self, get):
+        get.return_value = {"mbid": {"tag": {
+            "recording": [{"tag": "rock", "count": 5}],
+            "artist": [{"tag": "indie", "count": 8}, {"tag": "rock", "count": 3}],
+        }, "recording": {"first_release_date": "2020-01-01", "isrcs": ["ABC"]}}}
+        observations = feature_providers.listenbrainz({"musicbrainz_recording_id": "mbid"})
+        values = {item["name"]: item["value"] for item in observations}
+        self.assertEqual([tag["name"] for tag in values["tags"]], ["indie", "rock"])
+        self.assertEqual(values["isrcs"], ["ABC"])
+
+    @patch("web.services.feature_providers._get")
+    def test_reccobeats_rejects_fuzzy_wrong_recording(self, get):
+        get.return_value = {"content": [{
+            "id": "remix", "trackTitle": "Song Remix", "durationMs": 180000,
+            "artists": [{"name": "Artist"}],
+        }]}
+        result = feature_providers.reccobeats({"name": "Song", "artists": "Artist", "duration_ms": 180000})
+        self.assertEqual(result, [])
+        self.assertEqual(get.call_count, 1)
 
 
 if __name__ == "__main__":

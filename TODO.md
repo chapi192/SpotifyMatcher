@@ -72,8 +72,10 @@ home server. Spotify Development Mode is sufficient for this use case.
 - [ ] Add review controls for uncertain MusicBrainz matches.
 - [x] Persist and display the reason behind automatic, held, missing, and
   temporary-error MusicBrainz decisions.
-- [ ] Add AcousticBrainz, ListenBrainz, and optional ReccoBeats enrichment
-  adapters after identity matches have been reviewed.
+- [x] Add bounded AcousticBrainz, ListenBrainz, and optional ReccoBeats
+  enrichment adapters with permanently cached normalized observations.
+- [x] Add a side-by-side provider inspection view for actual returned features,
+  coverage failures, confidence, and semantic tags.
 - [ ] Recommend existing destinations for newly liked or unfiled tracks.
 - [ ] Score matches using artists, albums, genres/tags, era, and the owner's
   previous filing decisions.

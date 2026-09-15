@@ -149,6 +149,15 @@ def initialize_catalog() -> None:
                 PRIMARY KEY (track_id, provider, feature_name)
             );
 
+            CREATE TABLE IF NOT EXISTS provider_fetches (
+                track_id TEXT NOT NULL REFERENCES tracks(track_id) ON DELETE CASCADE,
+                provider TEXT NOT NULL,
+                status TEXT NOT NULL,
+                reason TEXT,
+                fetched_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (track_id, provider)
+            );
+
             CREATE TABLE IF NOT EXISTS resolved_features (
                 track_id TEXT NOT NULL REFERENCES tracks(track_id) ON DELETE CASCADE,
                 feature_name TEXT NOT NULL,
@@ -741,8 +750,8 @@ def begin_enrichment_job(user_id: str, provider: str, batch_limit: int = 25) -> 
     batch_limit = max(1, min(int(batch_limit), 100))
     with _DB_LOCK, closing(_connect()) as db, db:
         if db.execute(
-            "SELECT 1 FROM enrichment_jobs WHERE user_id = ? AND provider = ? AND status = 'running'",
-            (user_id, provider),
+            "SELECT 1 FROM enrichment_jobs WHERE user_id = ? AND status = 'running'",
+            (user_id,),
         ).fetchone():
             return None
         total = db.execute(
@@ -874,6 +883,113 @@ def enrichment_status(user_id: str) -> dict:
         "identity_counts": {key: counts[key] or 0 for key in counts.keys()},
         "recent_matches": recent_matches,
     }
+
+
+def feature_enrichment_candidates(user_id: str, provider: str, limit: int = 25) -> list[dict]:
+    initialize_catalog()
+    limit = max(1, min(int(limit), 100))
+    with _DB_LOCK, closing(_connect()) as db, db:
+        rows = db.execute(
+            """
+            SELECT DISTINCT t.track_id, t.name, t.duration_ms, t.album_name, t.isrc,
+                   ti.musicbrainz_recording_id,
+                   COALESCE((SELECT GROUP_CONCAT(a.name, ', ') FROM track_artists ta
+                       JOIN artists a ON a.artist_id = ta.artist_id WHERE ta.track_id = t.track_id), '') AS artists
+            FROM tracks t
+            JOIN track_identities ti ON ti.track_id = t.track_id AND ti.match_status = 'matched'
+            JOIN playlist_tracks pt ON pt.track_id = t.track_id
+            JOIN playlists p ON p.user_id = pt.user_id AND p.playlist_id = pt.playlist_id
+            LEFT JOIN provider_fetches pf ON pf.track_id = t.track_id AND pf.provider = ?
+            WHERE pt.user_id = ? AND p.is_active = 1 AND (pf.track_id IS NULL OR pf.status = 'error')
+            ORDER BY t.name COLLATE NOCASE, t.track_id LIMIT ?
+            """,
+            (provider, user_id, limit),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def begin_feature_enrichment_job(user_id: str, provider: str, batch_limit: int = 25) -> int | None:
+    initialize_catalog()
+    batch_limit = max(1, min(int(batch_limit), 100))
+    with _DB_LOCK, closing(_connect()) as db, db:
+        if db.execute(
+            "SELECT 1 FROM enrichment_jobs WHERE user_id = ? AND status = 'running'",
+            (user_id,),
+        ).fetchone():
+            return None
+        total = len(feature_enrichment_candidates(user_id, provider, batch_limit))
+        cursor = db.execute(
+            "INSERT INTO enrichment_jobs (user_id, provider, status, total_tracks, batch_limit) VALUES (?, ?, 'running', ?, ?)",
+            (user_id, provider, total, batch_limit),
+        )
+        return int(cursor.lastrowid)
+
+
+def save_provider_result(track_id: str, provider: str, status: str,
+                         observations: list[dict], reason: str | None = None) -> None:
+    initialize_catalog()
+    with _DB_LOCK, closing(_connect()) as db, db:
+        db.execute("DELETE FROM feature_observations WHERE track_id = ? AND provider = ?", (track_id, provider))
+        for item in observations:
+            value = item.get("value")
+            numeric = float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+            text_value = value if isinstance(value, str) else None
+            json_value = json.dumps(value, ensure_ascii=False) if isinstance(value, (list, dict)) else None
+            db.execute(
+                """
+                INSERT INTO feature_observations (
+                    track_id, provider, feature_name, numeric_value, text_value, json_value, confidence
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (track_id, provider, item["name"], numeric, text_value, json_value, item.get("confidence")),
+            )
+        db.execute(
+            """
+            INSERT INTO provider_fetches (track_id, provider, status, reason)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(track_id, provider) DO UPDATE SET
+                status = excluded.status, reason = excluded.reason, fetched_at = CURRENT_TIMESTAMP
+            """,
+            (track_id, provider, status, reason),
+        )
+
+
+def feature_comparison(user_id: str, limit: int = 100) -> list[dict]:
+    initialize_catalog()
+    limit = max(1, min(int(limit), 250))
+    with _DB_LOCK, closing(_connect()) as db, db:
+        tracks = db.execute(
+            """
+            SELECT DISTINCT t.track_id, t.name,
+                   COALESCE((SELECT GROUP_CONCAT(a.name, ', ') FROM track_artists ta
+                       JOIN artists a ON a.artist_id = ta.artist_id WHERE ta.track_id = t.track_id), '') AS artists
+            FROM tracks t JOIN playlist_tracks pt ON pt.track_id = t.track_id
+            JOIN playlists p ON p.user_id = pt.user_id AND p.playlist_id = pt.playlist_id
+            WHERE pt.user_id = ? AND p.is_active = 1
+              AND EXISTS (SELECT 1 FROM provider_fetches pf WHERE pf.track_id = t.track_id)
+            ORDER BY (SELECT MAX(fetched_at) FROM provider_fetches pf WHERE pf.track_id = t.track_id) DESC
+            LIMIT ?
+            """,
+            (user_id, limit),
+        ).fetchall()
+        output = []
+        for track in tracks:
+            item = dict(track)
+            item["providers"] = {}
+            fetches = db.execute("SELECT provider, status, reason FROM provider_fetches WHERE track_id = ?", (track["track_id"],)).fetchall()
+            for fetch in fetches:
+                features = {}
+                for feature in db.execute(
+                    "SELECT feature_name, numeric_value, text_value, json_value, confidence FROM feature_observations WHERE track_id = ? AND provider = ?",
+                    (track["track_id"], fetch["provider"]),
+                ):
+                    value = feature["numeric_value"]
+                    if value is None: value = feature["text_value"]
+                    if value is None and feature["json_value"]: value = json.loads(feature["json_value"])
+                    features[feature["feature_name"]] = {"value": value, "confidence": feature["confidence"]}
+                item["providers"][fetch["provider"]] = {"status": fetch["status"], "reason": fetch["reason"], "features": features}
+            output.append(item)
+    return output
 
 
 def save_selection(user_id: str, selected_ids: list[str], hidden_ids: list[str], breakdown_source: str | None) -> None:

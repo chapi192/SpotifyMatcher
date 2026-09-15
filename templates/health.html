@@ -34,7 +34,16 @@
                     <option value="100">100 tracks</option>
                 </select>
                 <button id="startEnrichmentBtn" class="btn" type="button">Match sample</button>
+                <button class="btn provider-btn" data-provider="acousticbrainz" type="button">AcousticBrainz</button>
+                <button class="btn provider-btn" data-provider="listenbrainz" type="button">ListenBrainz</button>
+                <button class="btn provider-btn" data-provider="reccobeats" type="button">ReccoBeats</button>
             </div>
+        </section>
+        <section id="featureComparison" class="match-review" hidden>
+            <div class="match-review-header">
+                <div><p class="health-kicker">Cached observations</p><h3>What the providers actually supplied</h3></div>
+            </div>
+            <div id="featureComparisonRows" class="feature-comparison-rows"></div>
         </section>
         <section id="matchReview" class="match-review" hidden>
             <div class="match-review-header">
@@ -192,20 +201,21 @@ async function refreshEnrichmentStatus() {
     renderMatchReview(data.recent_matches || []);
     const button = document.getElementById("startEnrichmentBtn");
     if (job?.status === "running") {
-        button.disabled = true;
+        document.querySelectorAll(".enrichment-actions button").forEach(item => item.disabled = true);
         document.getElementById("enrichmentStatusText").textContent =
-            `Matching ${job.current_track || "catalog"} · ${job.completed_tracks.toLocaleString()} / ${job.total_tracks.toLocaleString()} · ${job.matched_tracks.toLocaleString()} confident · ${job.review_tracks.toLocaleString()} need review · ${(job.failed_tracks || 0).toLocaleString()} retry later`;
+            `${job.provider === "musicbrainz" ? "Matching" : "Fetching " + job.provider} ${job.current_track || "catalog"} · ${job.completed_tracks.toLocaleString()} / ${job.total_tracks.toLocaleString()} · ${job.matched_tracks.toLocaleString()} found · ${(job.failed_tracks || 0).toLocaleString()} retry later`;
         if (!enrichmentPolling) {
             enrichmentPolling = true;
             setTimeout(async () => { enrichmentPolling = false; await refreshEnrichmentStatus(); }, 1500);
         }
     } else {
-        button.disabled = false;
+        document.querySelectorAll(".enrichment-actions button").forEach(item => item.disabled = false);
         const summary = `${counts.matched.toLocaleString()} matched · ${counts.review.toLocaleString()} need review · ${counts.missing.toLocaleString()} not found`;
         document.getElementById("enrichmentStatusText").textContent = job?.status === "error"
             ? `The batch stopped unexpectedly. Saved progress is intact; you can safely retry. ${summary}`
             : `${summary}${job?.failed_tracks ? ` · ${job.failed_tracks.toLocaleString()} temporarily unavailable and ready to retry` : ""}`;
         button.textContent = counts.checked ? "Match another batch" : "Match sample";
+        await loadFeatureComparison();
     }
 }
 
@@ -224,6 +234,43 @@ document.getElementById("startEnrichmentBtn").addEventListener("click", async ()
     }
     await refreshEnrichmentStatus();
 });
+
+document.querySelectorAll(".provider-btn").forEach(button => button.addEventListener("click", async () => {
+    const limit = Number(document.getElementById("enrichmentBatchSize").value);
+    document.getElementById("enrichmentStatusText").textContent = `Starting ${button.dataset.provider} sample...`;
+    const response = await fetch(`/api/enrichment/features/${button.dataset.provider}`, {
+        method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({limit})
+    });
+    const data = await response.json();
+    if (!response.ok && response.status !== 409) {
+        document.getElementById("enrichmentStatusText").textContent = data.error || "Could not start provider";
+        return;
+    }
+    await refreshEnrichmentStatus();
+}));
+
+function displayFeature(value) {
+    if (Array.isArray(value)) return value.slice(0, 8).map(item => item.name || item).join(", ");
+    if (typeof value === "number") return Number.isInteger(value) ? value : value.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
+    return String(value ?? "—");
+}
+
+async function loadFeatureComparison() {
+    const response = await fetch("/api/enrichment/features?limit=100");
+    if (!response.ok) return;
+    const data = await response.json();
+    const section = document.getElementById("featureComparison");
+    section.hidden = data.tracks.length === 0;
+    document.getElementById("featureComparisonRows").innerHTML = data.tracks.map(track => {
+        const providers = Object.entries(track.providers).map(([name, result]) => {
+            const features = Object.entries(result.features || {}).map(([feature, observation]) =>
+                `<span class="feature-pill"><small>${escapeHealth(feature.replaceAll("_", " "))}</small>${escapeHealth(displayFeature(observation.value))}${observation.confidence == null ? "" : `<em>${Math.round(observation.confidence * 100)}%</em>`}</span>`
+            ).join("");
+            return `<div class="provider-observations"><strong>${escapeHealth(name)}</strong><span class="match-status ${escapeHealth(result.status)}">${escapeHealth(result.status)}</span>${features || `<p>${escapeHealth(result.reason || "No observations")}</p>`}</div>`;
+        }).join("");
+        return `<article class="feature-track"><header><strong>${escapeHealth(track.name)}</strong><span>${escapeHealth(track.artists)}</span></header><div>${providers}</div></article>`;
+    }).join("");
+}
 
 function renderMatchReview(rows) {
     const section = document.getElementById("matchReview");
