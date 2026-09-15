@@ -28,8 +28,10 @@ home server. Spotify Development Mode is sufficient for this use case.
 - [x] Replace removed batch artist hydration with individual cached requests.
 - [x] Add an explicit "Sync library" screen and sync all owned/collaborative
   playlists without requiring dashboard selection.
-- [ ] Record sync runs, failures, additions, removals, and moves as historical
-  events instead of only retaining the latest state.
+- [x] Record sync-run history with failures, playlist additions/removals, track
+  membership changes, unchanged counts, and duration.
+- [ ] Preserve full playlist snapshots so track moves and historical states can
+  be inspected and restored, rather than retaining only aggregate run changes.
 - [ ] Move OAuth tokens out of the signed browser cookie into server-side
   storage.
 - [x] Persist synchronization status and error details in a SQLite job table.

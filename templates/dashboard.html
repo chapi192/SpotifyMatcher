@@ -181,11 +181,12 @@ async function refreshSyncStatus() {
     if (!sync) {
         status.textContent = "Library has not been synced";
     } else if (data.status === "running") {
-        status.textContent = `Syncing ${sync.current_playlist || "library"}`;
+        status.textContent = `Syncing ${sync.current_playlist || "library"} · ${sync.completed_playlists}/${sync.total_playlists}`;
     } else if (data.status === "error") {
         status.textContent = `Last sync failed: ${sync.error || "unknown error"}`;
     } else if (data.status === "complete") {
-        status.textContent = `Synced ${sync.completed_playlists} playlists`;
+        const duration = sync.elapsed_seconds == null ? "" : ` in ${sync.elapsed_seconds}s`;
+        status.textContent = `Synced ${sync.completed_playlists} playlists${duration} · ${sync.new_playlists} new · ${sync.changed_playlists} changed · ${sync.skipped_playlists} unchanged · ${sync.removed_playlists} removed · tracks +${sync.added_tracks}/-${sync.removed_tracks}`;
     } else {
         status.textContent = `Last sync ${data.status}`;
     }

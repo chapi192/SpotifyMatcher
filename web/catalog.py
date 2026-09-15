@@ -2,6 +2,7 @@ import json
 import os
 import sqlite3
 import threading
+from collections import Counter
 from contextlib import closing
 from pathlib import Path
 
@@ -102,6 +103,11 @@ def initialize_catalog() -> None:
                 completed_playlists INTEGER NOT NULL DEFAULT 0,
                 skipped_playlists INTEGER NOT NULL DEFAULT 0,
                 tracks_processed INTEGER NOT NULL DEFAULT 0,
+                new_playlists INTEGER NOT NULL DEFAULT 0,
+                changed_playlists INTEGER NOT NULL DEFAULT 0,
+                removed_playlists INTEGER NOT NULL DEFAULT 0,
+                added_tracks INTEGER NOT NULL DEFAULT 0,
+                removed_tracks INTEGER NOT NULL DEFAULT 0,
                 current_playlist TEXT,
                 error TEXT
             );
@@ -135,6 +141,20 @@ def initialize_catalog() -> None:
             if column not in existing_columns:
                 db.execute(statement)
 
+        sync_columns = {
+            row["name"] for row in db.execute("PRAGMA table_info(sync_runs)")
+        }
+        sync_migrations = {
+            "new_playlists": "ALTER TABLE sync_runs ADD COLUMN new_playlists INTEGER NOT NULL DEFAULT 0",
+            "changed_playlists": "ALTER TABLE sync_runs ADD COLUMN changed_playlists INTEGER NOT NULL DEFAULT 0",
+            "removed_playlists": "ALTER TABLE sync_runs ADD COLUMN removed_playlists INTEGER NOT NULL DEFAULT 0",
+            "added_tracks": "ALTER TABLE sync_runs ADD COLUMN added_tracks INTEGER NOT NULL DEFAULT 0",
+            "removed_tracks": "ALTER TABLE sync_runs ADD COLUMN removed_tracks INTEGER NOT NULL DEFAULT 0",
+        }
+        for column, statement in sync_migrations.items():
+            if column not in sync_columns:
+                db.execute(statement)
+
 
 
 def recover_interrupted_sync_runs() -> None:
@@ -150,19 +170,36 @@ def recover_interrupted_sync_runs() -> None:
         )
 
 
-def save_playlist_dataset(user_id: str, dataset: dict, metadata: dict | None = None) -> None:
+def save_playlist_dataset(user_id: str, dataset: dict, metadata: dict | None = None) -> dict:
     if not user_id or not dataset:
-        return
+        return {"is_new": False, "changed": False, "added_tracks": 0, "removed_tracks": 0}
 
     playlist_id = dataset.get("playlist_id")
     if not playlist_id:
-        return
+        return {"is_new": False, "changed": False, "added_tracks": 0, "removed_tracks": 0}
 
     tracks = dataset.get("tracks") or []
     payload = json.dumps(dataset, ensure_ascii=False, separators=(",", ":"))
     metadata = metadata or {}
 
     with _DB_LOCK, closing(_connect()) as db, db:
+        existing = db.execute(
+            "SELECT dataset_json FROM playlists WHERE user_id = ? AND playlist_id = ?",
+            (user_id, playlist_id),
+        ).fetchone()
+        old_tracks = Counter(
+            row["track_id"] for row in db.execute(
+                "SELECT track_id FROM playlist_tracks WHERE user_id = ? AND playlist_id = ?",
+                (user_id, playlist_id),
+            )
+        )
+        new_tracks = Counter(
+            track.get("track_id") for track in tracks if track.get("track_id")
+        )
+        added_tracks = sum((new_tracks - old_tracks).values())
+        removed_tracks = sum((old_tracks - new_tracks).values())
+        changed = existing is None or existing["dataset_json"] != payload
+
         db.execute(
             """
             INSERT INTO playlists (
@@ -273,6 +310,13 @@ def save_playlist_dataset(user_id: str, dataset: dict, metadata: dict | None = N
                 (user_id, playlist_id, track_id, position),
             )
 
+    return {
+        "is_new": existing is None,
+        "changed": changed,
+        "added_tracks": added_tracks,
+        "removed_tracks": removed_tracks,
+    }
+
 
 def load_playlist_dataset(user_id: str, playlist_id: str) -> dict | None:
     initialize_catalog()
@@ -358,9 +402,21 @@ def refresh_playlist_metadata(user_id: str, metadata: dict) -> None:
         )
 
 
-def set_active_playlists(user_id: str, playlist_ids: list[str]) -> None:
+def set_active_playlists(user_id: str, playlist_ids: list[str]) -> dict:
     initialize_catalog()
     with _DB_LOCK, closing(_connect()) as db, db:
+        active_ids = set(playlist_ids)
+        removed = []
+        for row in db.execute(
+            "SELECT playlist_id, name FROM playlists WHERE user_id = ? AND is_active = 1",
+            (user_id,),
+        ):
+            if row["playlist_id"] not in active_ids:
+                track_count = db.execute(
+                    "SELECT COUNT(*) FROM playlist_tracks WHERE user_id = ? AND playlist_id = ?",
+                    (user_id, row["playlist_id"]),
+                ).fetchone()[0]
+                removed.append({"id": row["playlist_id"], "name": row["name"], "track_count": track_count})
         db.execute("UPDATE playlists SET is_active = 0 WHERE user_id = ?", (user_id,))
         db.executemany(
             """
@@ -369,6 +425,10 @@ def set_active_playlists(user_id: str, playlist_ids: list[str]) -> None:
             """,
             [(user_id, playlist_id) for playlist_id in playlist_ids],
         )
+    return {
+        "removed_playlists": len(removed),
+        "removed_tracks": sum(item["track_count"] for item in removed),
+    }
 
 
 def begin_sync_run(user_id: str) -> int | None:
@@ -391,6 +451,8 @@ def update_sync_run(run_id: int, **values) -> None:
     allowed = {
         "total_playlists", "completed_playlists", "skipped_playlists",
         "tracks_processed", "current_playlist", "error",
+        "new_playlists", "changed_playlists", "removed_playlists",
+        "added_tracks", "removed_tracks",
     }
     updates = {key: value for key, value in values.items() if key in allowed}
     if not updates:
@@ -423,13 +485,34 @@ def latest_sync_run(user_id: str) -> dict | None:
     with _DB_LOCK, closing(_connect()) as db, db:
         row = db.execute(
             """
-            SELECT * FROM sync_runs
+            SELECT *, ROUND(
+                (julianday(COALESCE(completed_at, CURRENT_TIMESTAMP)) - julianday(started_at)) * 86400,
+                1
+            ) AS elapsed_seconds FROM sync_runs
             WHERE user_id = ?
             ORDER BY id DESC LIMIT 1
             """,
             (user_id,),
         ).fetchone()
     return dict(row) if row else None
+
+
+def sync_history(user_id: str, limit: int = 10) -> list[dict]:
+    initialize_catalog()
+    limit = max(1, min(int(limit), 50))
+    with _DB_LOCK, closing(_connect()) as db, db:
+        rows = db.execute(
+            """
+            SELECT *, ROUND(
+                (julianday(COALESCE(completed_at, CURRENT_TIMESTAMP)) - julianday(started_at)) * 86400,
+                1
+            ) AS elapsed_seconds FROM sync_runs
+            WHERE user_id = ?
+            ORDER BY id DESC LIMIT ?
+            """,
+            (user_id, limit),
+        ).fetchall()
+    return [dict(row) for row in rows]
 
 
 def save_selection(user_id: str, selected_ids: list[str], hidden_ids: list[str], breakdown_source: str | None) -> None:

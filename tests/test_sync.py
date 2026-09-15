@@ -109,7 +109,11 @@ class SyncWorkerTests(unittest.TestCase):
             "scope": "user-read-private playlist-read-private playlist-read-collaborative user-library-read",
         })
 
-        self.assertEqual(catalog.latest_sync_run("user-1")["status"], "complete")
+        sync = catalog.latest_sync_run("user-1")
+        self.assertEqual(sync["status"], "complete")
+        self.assertEqual(sync["new_playlists"], 1)
+        self.assertEqual(sync["changed_playlists"], 0)
+        self.assertEqual(sync["skipped_playlists"], 0)
         self.assertIsNotNone(catalog.load_playlist_dataset("user-1", "playlist-1"))
         spotify_class.assert_called_once()
 

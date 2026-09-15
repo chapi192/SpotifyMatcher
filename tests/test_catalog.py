@@ -45,11 +45,24 @@ class CatalogTests(unittest.TestCase):
                 }],
             }],
         }
-        catalog.save_playlist_dataset(
+        first_changes = catalog.save_playlist_dataset(
             "user-1",
             dataset,
             metadata={"owner_id": "user-1", "snapshot_id": "snapshot-1"},
         )
+        self.assertEqual(first_changes, {
+            "is_new": True,
+            "changed": True,
+            "added_tracks": 1,
+            "removed_tracks": 0,
+        })
+
+        unchanged = catalog.save_playlist_dataset(
+            "user-1", dataset,
+            metadata={"owner_id": "user-1", "snapshot_id": "snapshot-1"},
+        )
+        self.assertFalse(unchanged["changed"])
+        self.assertEqual(unchanged["added_tracks"], 0)
 
         loaded = catalog.load_playlist_dataset("user-1", "playlist-1")
         self.assertEqual(loaded, dataset)
@@ -74,13 +87,18 @@ class CatalogTests(unittest.TestCase):
             total_playlists=3,
             completed_playlists=1,
             current_playlist="Test playlist",
+            new_playlists=1,
+            added_tracks=12,
         )
         running = catalog.latest_sync_run("user-1")
         self.assertEqual(running["status"], "running")
         self.assertEqual(running["completed_playlists"], 1)
+        self.assertEqual(running["new_playlists"], 1)
+        self.assertEqual(running["added_tracks"], 12)
 
         catalog.finish_sync_run(run_id, "complete")
         self.assertEqual(catalog.latest_sync_run("user-1")["status"], "complete")
+        self.assertEqual(len(catalog.sync_history("user-1", limit=10)), 1)
 
         catalog.save_selection("user-1", ["p1", "p2"], ["p3"], "p1")
         self.assertEqual(catalog.load_selection("user-1"), {
@@ -88,6 +106,20 @@ class CatalogTests(unittest.TestCase):
             "hidden_ids": ["p3"],
             "breakdown_source": "p1",
         })
+
+    def test_removed_active_playlists_are_counted_without_being_deleted(self):
+        dataset = {
+            "playlist_id": "old-playlist",
+            "playlist_name": "Old playlist",
+            "tracks": [{"track_id": "track-1", "track_name": "Track", "artists": []}],
+        }
+        catalog.save_playlist_dataset("user-1", dataset)
+
+        changes = catalog.set_active_playlists("user-1", ["another-playlist"])
+
+        self.assertEqual(changes["removed_playlists"], 1)
+        self.assertEqual(changes["removed_tracks"], 1)
+        self.assertIsNotNone(catalog.load_playlist_dataset("user-1", "old-playlist"))
 
 
 if __name__ == "__main__":
