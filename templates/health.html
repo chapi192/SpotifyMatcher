@@ -19,6 +19,14 @@
     <section id="healthError" class="health-state health-error" hidden></section>
 
     <div id="healthContent" hidden>
+        <section class="enrichment-panel">
+            <div>
+                <p class="health-kicker">Feature enrichment</p>
+                <h3>Build reliable recording identities</h3>
+                <p id="enrichmentStatusText">Check the local catalog against MusicBrainz before importing acoustic features and community tags.</p>
+            </div>
+            <button id="startEnrichmentBtn" class="btn" type="button">Match MusicBrainz</button>
+        </section>
         <section class="health-summary" aria-label="Library health summary">
             <button class="health-stat active" data-panel="orphans">
                 <span class="health-stat-label">Unfiled Liked Songs</span>
@@ -152,5 +160,44 @@ async function loadHealth() {
 document.querySelectorAll(".health-stat").forEach(card => card.addEventListener("click", () => selectHealthPanel(card.dataset.panel)));
 document.getElementById("healthSearch").addEventListener("input", renderHealthRows);
 loadHealth();
+
+let enrichmentPolling = false;
+async function refreshEnrichmentStatus() {
+    const response = await fetch("/api/enrichment/status");
+    if (!response.ok) return;
+    const data = await response.json();
+    const job = data.job;
+    const counts = data.identity_counts;
+    const button = document.getElementById("startEnrichmentBtn");
+    if (job?.status === "running") {
+        button.disabled = true;
+        document.getElementById("enrichmentStatusText").textContent =
+            `Matching ${job.current_track || "catalog"} · ${job.completed_tracks.toLocaleString()} / ${job.total_tracks.toLocaleString()} · ${job.matched_tracks.toLocaleString()} confident · ${job.review_tracks.toLocaleString()} need review`;
+        if (!enrichmentPolling) {
+            enrichmentPolling = true;
+            setTimeout(async () => { enrichmentPolling = false; await refreshEnrichmentStatus(); }, 1500);
+        }
+    } else {
+        button.disabled = false;
+        const summary = `${counts.matched.toLocaleString()} matched · ${counts.review.toLocaleString()} need review · ${counts.missing.toLocaleString()} not found`;
+        document.getElementById("enrichmentStatusText").textContent = job?.status === "error"
+            ? `Last match stopped: ${job.error}. Saved progress is intact. ${summary}` : summary;
+        button.textContent = counts.checked ? "Match remaining tracks" : "Match MusicBrainz";
+    }
+}
+
+document.getElementById("startEnrichmentBtn").addEventListener("click", async () => {
+    const button = document.getElementById("startEnrichmentBtn");
+    button.disabled = true;
+    const response = await fetch("/api/enrichment/musicbrainz", {method: "POST"});
+    const data = await response.json();
+    if (!response.ok && response.status !== 409) {
+        document.getElementById("enrichmentStatusText").textContent = data.error || "Could not start matching";
+        button.disabled = false;
+        return;
+    }
+    await refreshEnrichmentStatus();
+});
+refreshEnrichmentStatus();
 </script>
 {% endblock %}

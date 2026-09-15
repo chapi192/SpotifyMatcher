@@ -60,6 +60,7 @@ def initialize_catalog() -> None:
                 album_name TEXT,
                 release_date TEXT,
                 album_track_total INTEGER,
+                isrc TEXT,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
@@ -122,6 +123,59 @@ def initialize_catalog() -> None:
                 breakdown_source TEXT,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
+
+            CREATE TABLE IF NOT EXISTS track_identities (
+                track_id TEXT PRIMARY KEY REFERENCES tracks(track_id) ON DELETE CASCADE,
+                musicbrainz_recording_id TEXT,
+                match_status TEXT NOT NULL DEFAULT 'pending',
+                match_method TEXT,
+                confidence REAL,
+                candidates_json TEXT NOT NULL DEFAULT '[]',
+                manually_locked INTEGER NOT NULL DEFAULT 0,
+                checked_at TEXT,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS feature_observations (
+                track_id TEXT NOT NULL REFERENCES tracks(track_id) ON DELETE CASCADE,
+                provider TEXT NOT NULL,
+                feature_name TEXT NOT NULL,
+                numeric_value REAL,
+                text_value TEXT,
+                json_value TEXT,
+                confidence REAL,
+                fetched_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (track_id, provider, feature_name)
+            );
+
+            CREATE TABLE IF NOT EXISTS resolved_features (
+                track_id TEXT NOT NULL REFERENCES tracks(track_id) ON DELETE CASCADE,
+                feature_name TEXT NOT NULL,
+                numeric_value REAL,
+                text_value TEXT,
+                json_value TEXT,
+                resolution_mode TEXT NOT NULL DEFAULT 'consensus',
+                preferred_provider TEXT,
+                manually_locked INTEGER NOT NULL DEFAULT 0,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (track_id, feature_name)
+            );
+
+            CREATE TABLE IF NOT EXISTS enrichment_jobs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                provider TEXT NOT NULL,
+                status TEXT NOT NULL,
+                started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                completed_at TEXT,
+                total_tracks INTEGER NOT NULL DEFAULT 0,
+                completed_tracks INTEGER NOT NULL DEFAULT 0,
+                matched_tracks INTEGER NOT NULL DEFAULT 0,
+                review_tracks INTEGER NOT NULL DEFAULT 0,
+                missing_tracks INTEGER NOT NULL DEFAULT 0,
+                current_track TEXT,
+                error TEXT
+            );
             """
         )
 
@@ -155,6 +209,10 @@ def initialize_catalog() -> None:
             if column not in sync_columns:
                 db.execute(statement)
 
+        track_columns = {row["name"] for row in db.execute("PRAGMA table_info(tracks)")}
+        if "isrc" not in track_columns:
+            db.execute("ALTER TABLE tracks ADD COLUMN isrc TEXT")
+
 
 
 def recover_interrupted_sync_runs() -> None:
@@ -165,6 +223,14 @@ def recover_interrupted_sync_runs() -> None:
             SET status = 'interrupted',
                 completed_at = CURRENT_TIMESTAMP,
                 error = COALESCE(error, 'Application stopped during synchronization')
+            WHERE status = 'running'
+            """
+        )
+        db.execute(
+            """
+            UPDATE enrichment_jobs
+            SET status = 'interrupted', completed_at = CURRENT_TIMESTAMP,
+                error = COALESCE(error, 'Application stopped during enrichment')
             WHERE status = 'running'
             """
         )
@@ -246,8 +312,8 @@ def save_playlist_dataset(user_id: str, dataset: dict, metadata: dict | None = N
                 """
                 INSERT INTO tracks (
                     track_id, name, duration_ms, explicit, spotify_url,
-                    album_id, album_name, release_date, album_track_total
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    album_id, album_name, release_date, album_track_total, isrc
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(track_id) DO UPDATE SET
                     name = excluded.name,
                     duration_ms = excluded.duration_ms,
@@ -257,6 +323,7 @@ def save_playlist_dataset(user_id: str, dataset: dict, metadata: dict | None = N
                     album_name = excluded.album_name,
                     release_date = excluded.release_date,
                     album_track_total = excluded.album_track_total,
+                    isrc = COALESCE(excluded.isrc, tracks.isrc),
                     updated_at = CURRENT_TIMESTAMP
                 """,
                 (
@@ -269,6 +336,7 @@ def save_playlist_dataset(user_id: str, dataset: dict, metadata: dict | None = N
                     album.get("album_name"),
                     album.get("release_date"),
                     album.get("total_tracks"),
+                    track.get("isrc"),
                 ),
             )
             db.execute("DELETE FROM track_artists WHERE track_id = ?", (track_id,))
@@ -653,6 +721,113 @@ def library_health(user_id: str, detail_limit: int = 250) -> dict:
         "not_liked": [dict(row) for row in unliked],
         "duplicate_placements": [dict(row) for row in duplicates],
     }
+
+
+def begin_enrichment_job(user_id: str, provider: str) -> int | None:
+    initialize_catalog()
+    with _DB_LOCK, closing(_connect()) as db, db:
+        if db.execute(
+            "SELECT 1 FROM enrichment_jobs WHERE user_id = ? AND provider = ? AND status = 'running'",
+            (user_id, provider),
+        ).fetchone():
+            return None
+        total = db.execute(
+            """
+            SELECT COUNT(DISTINCT pt.track_id) FROM playlist_tracks pt
+            JOIN playlists p ON p.user_id = pt.user_id AND p.playlist_id = pt.playlist_id
+            LEFT JOIN track_identities ti ON ti.track_id = pt.track_id
+            WHERE pt.user_id = ? AND p.is_active = 1
+              AND (ti.track_id IS NULL OR ti.match_status IN ('pending', 'error'))
+            """,
+            (user_id,),
+        ).fetchone()[0]
+        cursor = db.execute(
+            "INSERT INTO enrichment_jobs (user_id, provider, status, total_tracks) VALUES (?, ?, 'running', ?)",
+            (user_id, provider, total),
+        )
+        return int(cursor.lastrowid)
+
+
+def enrichment_candidates(user_id: str) -> list[dict]:
+    initialize_catalog()
+    with _DB_LOCK, closing(_connect()) as db, db:
+        rows = db.execute(
+            """
+            SELECT DISTINCT t.track_id, t.name, t.duration_ms, t.album_name, t.isrc,
+                   COALESCE((SELECT GROUP_CONCAT(a.name, ', ') FROM track_artists ta
+                       JOIN artists a ON a.artist_id = ta.artist_id WHERE ta.track_id = t.track_id), '') AS artists
+            FROM tracks t
+            JOIN playlist_tracks pt ON pt.track_id = t.track_id
+            JOIN playlists p ON p.user_id = pt.user_id AND p.playlist_id = pt.playlist_id
+            LEFT JOIN track_identities ti ON ti.track_id = t.track_id
+            WHERE pt.user_id = ? AND p.is_active = 1
+              AND (ti.track_id IS NULL OR ti.match_status IN ('pending', 'error'))
+            ORDER BY t.track_id
+            """,
+            (user_id,),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def save_track_identity(track_id: str, *, recording_id: str | None, status: str,
+                        method: str, confidence: float | None, candidates: list[dict]) -> None:
+    with _DB_LOCK, closing(_connect()) as db, db:
+        db.execute(
+            """
+            INSERT INTO track_identities (
+                track_id, musicbrainz_recording_id, match_status, match_method,
+                confidence, candidates_json, checked_at
+            ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(track_id) DO UPDATE SET
+                musicbrainz_recording_id = CASE WHEN manually_locked = 1 THEN musicbrainz_recording_id ELSE excluded.musicbrainz_recording_id END,
+                match_status = CASE WHEN manually_locked = 1 THEN match_status ELSE excluded.match_status END,
+                match_method = CASE WHEN manually_locked = 1 THEN match_method ELSE excluded.match_method END,
+                confidence = CASE WHEN manually_locked = 1 THEN confidence ELSE excluded.confidence END,
+                candidates_json = CASE WHEN manually_locked = 1 THEN candidates_json ELSE excluded.candidates_json END,
+                checked_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+            """,
+            (track_id, recording_id, status, method, confidence, json.dumps(candidates)),
+        )
+
+
+def update_enrichment_job(job_id: int, **values) -> None:
+    allowed = {"completed_tracks", "matched_tracks", "review_tracks", "missing_tracks", "current_track", "error"}
+    updates = {key: value for key, value in values.items() if key in allowed}
+    if not updates:
+        return
+    assignments = ", ".join(f"{key} = ?" for key in updates)
+    with _DB_LOCK, closing(_connect()) as db, db:
+        db.execute(f"UPDATE enrichment_jobs SET {assignments} WHERE id = ? AND status = 'running'", (*updates.values(), job_id))
+
+
+def finish_enrichment_job(job_id: int, status: str, error: str | None = None) -> None:
+    with _DB_LOCK, closing(_connect()) as db, db:
+        db.execute(
+            "UPDATE enrichment_jobs SET status = ?, completed_at = CURRENT_TIMESTAMP, current_track = NULL, error = ? WHERE id = ?",
+            (status, error, job_id),
+        )
+
+
+def enrichment_status(user_id: str) -> dict:
+    initialize_catalog()
+    with _DB_LOCK, closing(_connect()) as db, db:
+        job = db.execute("SELECT * FROM enrichment_jobs WHERE user_id = ? ORDER BY id DESC LIMIT 1", (user_id,)).fetchone()
+        counts = db.execute(
+            """
+            SELECT COUNT(DISTINCT ti.track_id) AS checked,
+                   SUM(CASE WHEN match_status = 'matched' THEN 1 ELSE 0 END) AS matched,
+                   SUM(CASE WHEN match_status = 'review' THEN 1 ELSE 0 END) AS review,
+                   SUM(CASE WHEN match_status = 'missing' THEN 1 ELSE 0 END) AS missing
+            FROM track_identities ti
+            WHERE EXISTS (
+                SELECT 1 FROM playlist_tracks pt
+                JOIN playlists p ON p.user_id = pt.user_id AND p.playlist_id = pt.playlist_id
+                WHERE pt.track_id = ti.track_id AND pt.user_id = ? AND p.is_active = 1
+            )
+            """,
+            (user_id,),
+        ).fetchone()
+    return {"job": dict(job) if job else None, "identity_counts": {key: counts[key] or 0 for key in counts.keys()}}
 
 
 def save_selection(user_id: str, selected_ids: list[str], hidden_ids: list[str], breakdown_source: str | None) -> None:

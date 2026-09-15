@@ -97,6 +97,7 @@ def _append_tracks_from_page(page_items, playlist_tracks, artist_cache):
             "disc_number": track.get("disc_number"),
             "preview_url": track.get("preview_url"),
             "spotify_url": spotify_url,
+            "isrc": (track.get("external_ids") or {}).get("isrc"),
             "album": {
                 "album_id": album_data.get("id"),
                 "album_name": album_data.get("name"),

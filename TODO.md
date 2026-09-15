@@ -62,6 +62,12 @@ home server. Spotify Development Mode is sufficient for this use case.
 
 ## Phase 4: placement and recommendation engine
 
+- [x] Add durable track identities, provider observations, resolved features,
+  manual-override fields, and resumable enrichment job storage.
+- [x] Add a cached, rate-limited MusicBrainz identity-matching first pass.
+- [ ] Add review controls for uncertain MusicBrainz matches.
+- [ ] Add AcousticBrainz, ListenBrainz, and optional ReccoBeats enrichment
+  adapters after identity matches have been reviewed.
 - [ ] Recommend existing destinations for newly liked or unfiled tracks.
 - [ ] Score matches using artists, albums, genres/tags, era, and the owner's
   previous filing decisions.
