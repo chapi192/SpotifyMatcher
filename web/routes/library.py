@@ -2,16 +2,34 @@ from fastapi import APIRouter, Request
 
 from web.spotify_auth import get_spotify_client, build_oauth
 from web.state import PLAYLIST_DATA_CACHE
+from web.catalog import load_playlist_dataset, load_selection
+from web.services.profile_library import build_playlist_profiles
 
 router = APIRouter()
 
 def get_active_dataset_and_profiles(request: Request, sp):
     from web.spotify_auth import get_user_id
     user_id = get_user_id(request)
-    selected_ids = request.session.get("selected_playlists", [])
+    selected_ids = load_selection(user_id)["selected_ids"]
 
     if not selected_ids:
         return None, None, {"status": "empty"}
+
+    user_cache = PLAYLIST_DATA_CACHE.get(user_id, {})
+    missing = [pid for pid in selected_ids if pid not in user_cache]
+
+    # Restore normalized datasets from SQLite after a server restart. Spotify is
+    # only contacted when a selected playlist has never been synchronized.
+    for pid in list(missing):
+        persisted = load_playlist_dataset(user_id, pid)
+        if not persisted:
+            continue
+        profile = build_playlist_profiles({pid: persisted}).get(pid)
+        PLAYLIST_DATA_CACHE.setdefault(user_id, {})[pid] = {
+            "dataset": persisted,
+            "profile": profile,
+            "fetched_at": 0,
+        }
 
     user_cache = PLAYLIST_DATA_CACHE.get(user_id, {})
     missing = [pid for pid in selected_ids if pid not in user_cache]

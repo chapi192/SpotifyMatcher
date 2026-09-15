@@ -1,6 +1,13 @@
 # Python cache
 __pycache__/
 *.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local Python environments
+venv/
+.venv/
 
 # Visual Studio / VS Code / PyProj noise
 .vs/
@@ -31,12 +38,15 @@ tracks.json
 *.pyproj
 *.sln
 
-# Data exports
-data/raw/
+# Private runtime data (database, enrichment logs, and exports)
+data/
+*.log
 dump_project.py
 PROJECT_ARCHITECTURE_DUMP.txt
 
 # My personal key
 my_secrets.py
 .env
+.env.*
+!.env.example
 CSS_DUMP.txt

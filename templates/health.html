@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/health.css') }}">
+{% endblock %}
+
+{% block content %}
+<main class="health-page">
+    <header class="health-heading">
+        <div>
+            <p class="health-kicker">Local catalog audit</p>
+            <h2>Library Health</h2>
+            <p class="health-intro">Organization signals calculated from your last sync. No Spotify requests are made here.</p>
+        </div>
+        <a class="btn health-sync-link" href="/dashboard">Sync settings</a>
+    </header>
+
+    <section id="healthLoading" class="health-state">Analyzing local library...</section>
+    <section id="healthError" class="health-state health-error" hidden></section>
+
+    <div id="healthContent" hidden>
+        <section class="enrichment-panel">
+            <div>
+                <p class="health-kicker">Feature enrichment</p>
+                <h3>Build reliable recording identities</h3>
+                <p id="enrichmentStatusText">Check the local catalog against MusicBrainz before importing acoustic features and community tags.</p>
+            </div>
+            <div class="enrichment-actions">
+                <label for="enrichmentBatchSize">Test batch</label>
+                <select id="enrichmentBatchSize" class="health-select">
+                    <option value="10">10 tracks</option>
+                    <option value="25" selected>25 tracks</option>
+                    <option value="50">50 tracks</option>
+                    <option value="100">100 tracks</option>
+                    <option value="1500">1500 tracks</option>
+                </select>
+                <button id="startEnrichmentBtn" class="btn" type="button">Match sample</button>
+                <button class="btn provider-btn" data-provider="acousticbrainz" type="button">AcousticBrainz</button>
+                <button class="btn provider-btn" data-provider="listenbrainz" type="button">ListenBrainz</button>
+                <button class="btn provider-btn" data-provider="reccobeats" type="button">ReccoBeats</button>
+                <button id="enrichAllBtn" class="btn enrich-all-btn" type="button">Run all remaining</button>
+            </div>
+        </section>
+        <section id="featureComparison" class="match-review" hidden>
+            <div class="match-review-header">
+                <div><p class="health-kicker">Cached observations</p><h3>What the providers actually supplied</h3></div>
+            </div>
+            <div id="featureComparisonRows" class="feature-comparison-rows"></div>
+        </section>
+        <section id="matchReview" class="match-review" hidden>
+            <div class="match-review-header">
+                <div><p class="health-kicker">Latest decisions</p><h3>MusicBrainz Match Review</h3></div>
+                <div class="match-legend"><span class="matched">Confident</span><span class="review">Review</span><span class="missing">Missing</span><span class="error">Retry later</span></div>
+            </div>
+            <div class="health-table-wrap">
+                <table class="health-table match-table">
+                    <thead><tr><th>Spotify track</th><th>Artist</th><th>Decision</th><th>Confidence</th><th>MusicBrainz candidate</th><th>Why</th></tr></thead>
+                    <tbody id="matchReviewRows"></tbody>
+                </table>
+            </div>
+        </section>
+        <section class="health-summary" aria-label="Library health summary">
+            <button class="health-stat active" data-panel="orphans">
+                <span class="health-stat-label">Unfiled Liked Songs</span>
+                <strong id="orphanCount">0</strong>
+                <small>Liked, but in no other playlist</small>
+            </button>
+            <button class="health-stat" data-panel="unliked">
+                <span class="health-stat-label">Not Liked</span>
+                <strong id="unlikedCount">0</strong>
+                <small>Filed in playlists, absent from Liked Songs</small>
+            </button>
+            <button class="health-stat" data-panel="duplicates">
+                <span class="health-stat-label">Duplicate Placements</span>
+                <strong id="duplicateCount">0</strong>
+                <small>Tracks found in multiple playlists</small>
+            </button>
+        </section>
+
+        <section class="health-catalog-strip">
+            <div><span>Active playlists</span><strong id="activePlaylistCount">0</strong></div>
+            <div><span>Empty playlists</span><strong id="emptyPlaylistCount">0</strong></div>
+            <div><span>Largest playlist</span><strong><span id="largestPlaylistCount">0</span> tracks</strong></div>
+        </section>
+
+        <section class="health-detail">
+            <div class="health-detail-header">
+                <div>
+                    <p id="detailEyebrow" class="health-kicker">Needs a home</p>
+                    <h3 id="detailTitle">Unfiled Liked Songs</h3>
+                    <p id="detailDescription">These tracks are saved in Liked Songs but do not appear in another active playlist.</p>
+                </div>
+                <input id="healthSearch" class="health-search" type="search" placeholder="Filter tracks..." aria-label="Filter tracks">
+            </div>
+            <div class="health-table-wrap">
+                <table class="health-table">
+                    <thead><tr><th>Track</th><th>Artist</th><th>Album</th><th id="contextHeading">Status</th></tr></thead>
+                    <tbody id="healthRows"></tbody>
+                </table>
+                <div id="healthEmpty" class="health-empty" hidden>Nothing to review here.</div>
+            </div>
+            <p id="healthLimitNote" class="health-limit-note"></p>
+        </section>
+    </div>
+</main>
+
+<script>
+const healthPanels = {
+    orphans: {
+        key: "orphan_liked", count: "orphan_liked", eyebrow: "Needs a home",
+        title: "Unfiled Liked Songs",
+        description: "These tracks are saved in Liked Songs but do not appear in another active playlist.",
+        context: () => "Liked only", heading: "Status"
+    },
+    unliked: {
+        key: "not_liked", count: "not_liked", eyebrow: "Review your saves",
+        title: "Playlist Tracks Not Liked",
+        description: "These tracks are organized in a playlist but are absent from Liked Songs.",
+        context: () => "Playlist only", heading: "Status"
+    },
+    duplicates: {
+        key: "duplicate_placements", count: "duplicate_placements", eyebrow: "Placement overlap",
+        title: "Tracks in Multiple Playlists",
+        description: "These are not duplicate files; they are tracks placed in two or more active playlists.",
+        context: row => row.playlists || `${row.playlist_count} playlists`, heading: "Playlists"
+    }
+};
+
+let healthData = null;
+let activeHealthPanel = "orphans";
+
+function escapeHealth(value) {
+    return String(value ?? "").replace(/[&<>'"]/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[char]);
+}
+
+function renderHealthRows() {
+    const panel = healthPanels[activeHealthPanel];
+    const query = document.getElementById("healthSearch").value.trim().toLowerCase();
+    const rows = (healthData[panel.key] || []).filter(row =>
+        [row.name, row.artists, row.album_name, row.playlists].some(value => String(value || "").toLowerCase().includes(query))
+    );
+    const body = document.getElementById("healthRows");
+    body.innerHTML = rows.map(row => `
+        <tr>
+            <td><a href="/track/${encodeURIComponent(row.track_id)}">${escapeHealth(row.name || "Unknown track")}</a></td>
+            <td>${escapeHealth(row.artists)}</td>
+            <td>${escapeHealth(row.album_name || "Unknown album")}</td>
+            <td class="health-context">${escapeHealth(panel.context(row))}</td>
+        </tr>`).join("");
+    document.getElementById("healthEmpty").hidden = rows.length !== 0;
+    const total = healthData.summary[panel.count];
+    document.getElementById("healthLimitNote").textContent = total > healthData.detail_limit
+        ? `Showing the first ${healthData.detail_limit.toLocaleString()} of ${total.toLocaleString()} results.` : "";
+}
+
+function selectHealthPanel(name) {
+    activeHealthPanel = name;
+    const panel = healthPanels[name];
+    document.querySelectorAll(".health-stat").forEach(card => card.classList.toggle("active", card.dataset.panel === name));
+    document.getElementById("detailEyebrow").textContent = panel.eyebrow;
+    document.getElementById("detailTitle").textContent = panel.title;
+    document.getElementById("detailDescription").textContent = panel.description;
+    document.getElementById("contextHeading").textContent = panel.heading;
+    document.getElementById("healthSearch").value = "";
+    renderHealthRows();
+}
+
+async function loadHealth() {
+    try {
+        const response = await fetch("/api/health");
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not analyze library");
+        if (data.status === "sync_required") throw new Error("Sync Liked Songs before running the library health audit.");
+        healthData = data;
+        document.getElementById("orphanCount").textContent = data.summary.orphan_liked.toLocaleString();
+        document.getElementById("unlikedCount").textContent = data.summary.not_liked.toLocaleString();
+        document.getElementById("duplicateCount").textContent = data.summary.duplicate_placements.toLocaleString();
+        document.getElementById("activePlaylistCount").textContent = data.summary.active_playlists.toLocaleString();
+        document.getElementById("emptyPlaylistCount").textContent = data.summary.empty_playlists.toLocaleString();
+        document.getElementById("largestPlaylistCount").textContent = data.summary.largest_playlist.toLocaleString();
+        document.getElementById("healthLoading").hidden = true;
+        document.getElementById("healthContent").hidden = false;
+        selectHealthPanel("orphans");
+    } catch (error) {
+        document.getElementById("healthLoading").hidden = true;
+        const element = document.getElementById("healthError");
+        element.textContent = error.message;
+        element.hidden = false;
+    }
+}
+
+document.querySelectorAll(".health-stat").forEach(card => card.addEventListener("click", () => selectHealthPanel(card.dataset.panel)));
+document.getElementById("healthSearch").addEventListener("input", renderHealthRows);
+loadHealth();
+
+let enrichmentPolling = false;
+async function refreshEnrichmentStatus() {
+    const response = await fetch("/api/enrichment/status");
+    if (!response.ok) return;
+    const data = await response.json();
+    const job = data.job;
+    const counts = data.identity_counts;
+    renderMatchReview(data.recent_matches || []);
+    const button = document.getElementById("startEnrichmentBtn");
+    if (job?.status === "running") {
+        document.querySelectorAll(".enrichment-actions button").forEach(item => item.disabled = true);
+        document.getElementById("enrichmentStatusText").textContent =
+            `${job.provider === "musicbrainz" ? "Matching" : "Fetching " + job.provider} ${job.current_track || "catalog"} · ${job.completed_tracks.toLocaleString()} / ${job.total_tracks.toLocaleString()} · ${job.matched_tracks.toLocaleString()} found · ${(job.failed_tracks || 0).toLocaleString()} retry later`;
+        if (!enrichmentPolling) {
+            enrichmentPolling = true;
+            setTimeout(async () => { enrichmentPolling = false; await refreshEnrichmentStatus(); }, 1500);
+        }
+    } else {
+        document.querySelectorAll(".enrichment-actions button").forEach(item => item.disabled = false);
+        const summary = `${counts.matched.toLocaleString()} matched · ${counts.review.toLocaleString()} need review · ${counts.missing.toLocaleString()} not found`;
+        document.getElementById("enrichmentStatusText").textContent = job?.status === "error"
+            ? `The batch stopped unexpectedly. Saved progress is intact; you can safely retry. ${summary}`
+            : `${summary}${job?.failed_tracks ? ` · ${job.failed_tracks.toLocaleString()} temporarily unavailable and ready to retry` : ""}`;
+        button.textContent = counts.checked ? "Match another batch" : "Match sample";
+        await loadFeatureComparison();
+    }
+}
+
+document.getElementById("startEnrichmentBtn").addEventListener("click", async () => {
+    const button = document.getElementById("startEnrichmentBtn");
+    button.disabled = true;
+    const limit = Number(document.getElementById("enrichmentBatchSize").value);
+    const response = await fetch("/api/enrichment/musicbrainz", {
+        method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({limit})
+    });
+    const data = await response.json();
+    if (!response.ok && response.status !== 409) {
+        document.getElementById("enrichmentStatusText").textContent = data.error || "Could not start matching";
+        button.disabled = false;
+        return;
+    }
+    await refreshEnrichmentStatus();
+});
+
+document.querySelectorAll(".provider-btn").forEach(button => button.addEventListener("click", async () => {
+    const limit = Number(document.getElementById("enrichmentBatchSize").value);
+    document.getElementById("enrichmentStatusText").textContent = `Starting ${button.dataset.provider} sample...`;
+    const response = await fetch(`/api/enrichment/features/${button.dataset.provider}`, {
+        method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({limit})
+    });
+    const data = await response.json();
+    if (!response.ok && response.status !== 409) {
+        document.getElementById("enrichmentStatusText").textContent = data.error || "Could not start provider";
+        return;
+    }
+    await refreshEnrichmentStatus();
+}));
+
+document.getElementById("enrichAllBtn").addEventListener("click", async () => {
+    document.getElementById("enrichmentStatusText").textContent = "Starting full cached enrichment...";
+    const response = await fetch("/api/enrichment/all", {method: "POST"});
+    const data = await response.json();
+    if (!response.ok && response.status !== 409) {
+        document.getElementById("enrichmentStatusText").textContent = data.error || "Could not start enrichment";
+        return;
+    }
+    await refreshEnrichmentStatus();
+});
+
+function displayFeature(value) {
+    if (Array.isArray(value)) return value.slice(0, 8).map(item => item.name || item).join(", ");
+    if (typeof value === "number") return Number.isInteger(value) ? value : value.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
+    return String(value ?? "—");
+}
+
+async function loadFeatureComparison() {
+    const response = await fetch("/api/enrichment/features?limit=100");
+    if (!response.ok) return;
+    const data = await response.json();
+    const section = document.getElementById("featureComparison");
+    section.hidden = data.tracks.length === 0;
+    document.getElementById("featureComparisonRows").innerHTML = data.tracks.map(track => {
+        const providers = Object.entries(track.providers).map(([name, result]) => {
+            const features = Object.entries(result.features || {}).map(([feature, observation]) =>
+                `<span class="feature-pill"><small>${escapeHealth(feature.replaceAll("_", " "))}</small>${escapeHealth(displayFeature(observation.value))}${observation.confidence == null ? "" : `<em>${Math.round(observation.confidence * 100)}%</em>`}</span>`
+            ).join("");
+            return `<div class="provider-observations"><strong>${escapeHealth(name)}</strong><span class="match-status ${escapeHealth(result.status)}">${escapeHealth(result.status)}</span>${features || `<p>${escapeHealth(result.reason || "No observations")}</p>`}</div>`;
+        }).join("");
+        return `<article class="feature-track"><header><strong><a href="/track/${encodeURIComponent(track.track_id)}">${escapeHealth(track.name)}</a></strong><span>${escapeHealth(track.artists)}</span></header><div>${providers}</div></article>`;
+    }).join("");
+}
+
+function renderMatchReview(rows) {
+    const section = document.getElementById("matchReview");
+    section.hidden = rows.length === 0;
+    document.getElementById("matchReviewRows").innerHTML = rows.map(row => {
+        const candidate = row.candidates?.[0];
+        const confidence = row.confidence == null ? "—" : `${Math.round(row.confidence * 100)}%`;
+        const candidateText = candidate ? `${candidate.title || "Unknown"} — ${candidate.artists || "Unknown artist"}` : "No candidate found";
+        const mbid = row.musicbrainz_recording_id || candidate?.recording_id;
+        const candidateHtml = mbid
+            ? `<a href="https://musicbrainz.org/recording/${encodeURIComponent(mbid)}" target="_blank" rel="noopener">${escapeHealth(candidateText)}</a>`
+            : escapeHealth(candidateText);
+        const fallbackReason = row.match_status === "error"
+            ? "MusicBrainz was temporarily unavailable; safe to retry."
+            : row.match_status === "missing" ? "No candidate matched the normalized title and artist." : "No explanation recorded by this older run.";
+        return `<tr><td><a href="/track/${encodeURIComponent(row.track_id)}">${escapeHealth(row.name)}</a></td><td>${escapeHealth(row.artists)}</td><td><span class="match-status ${escapeHealth(row.match_status)}">${escapeHealth(row.match_status)}</span></td><td>${confidence}</td><td>${candidateHtml}</td><td class="match-reason">${escapeHealth(row.decision_reason || fallbackReason)}</td></tr>`;
+    }).join("");
+}
+refreshEnrichmentStatus();
+</script>
+{% endblock %}

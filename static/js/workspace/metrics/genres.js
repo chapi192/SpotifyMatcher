@@ -138,7 +138,7 @@ export function renderGenres(data, currentSelection, targetId = "wsAnalyticsOutp
                 <div class="ws-genres-card">
                     <div class="ws-genres-label">Most Genre-Dense Track</div>
                     <div class="ws-genres-value">
-                        <a href="https://open.spotify.com/track/${data.max_genre_track_id}" target="_blank">
+                        <a href="/track/${encodeURIComponent(data.max_genre_track_id)}">
                             ${truncateText(escapeHtml(data.max_genre_track_name || ""), 30)}
                         </a>
                         <span>(${data.max_genres_on_track})</span>

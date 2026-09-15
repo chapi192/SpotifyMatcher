@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Request, Query
 from web.spotify_auth import get_spotify_client
 from web.routes.library import get_active_dataset_and_profiles
+from web.catalog import load_selection
+from web.spotify_auth import get_user_id
 
 router = APIRouter()
 
@@ -169,7 +171,7 @@ def recommendation_breakdown(
     # Playlist selection
     # ---------------------------------
 
-    breakdown_id = request.session.get("breakdown_source")
+    breakdown_id = load_selection(get_user_id(request))["breakdown_source"]
 
     if not breakdown_id:
         return {
@@ -324,7 +326,7 @@ def recommendation_debug_sample(request: Request):
     if err:
         return err
 
-    breakdown_id = request.session.get("breakdown_source")
+    breakdown_id = load_selection(get_user_id(request))["breakdown_source"]
 
     if not breakdown_id or breakdown_id not in dataset:
         return {"status": "error", "message": "Bad breakdown selection"}

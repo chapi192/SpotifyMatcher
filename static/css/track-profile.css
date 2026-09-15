@@ -1,0 +1,28 @@
+.track-page { max-width: 1280px; margin: 0 auto; padding: 8px 0 60px; }
+.track-back { display: inline-block; margin: 2px 0 22px; color: #8490a1; font-size: 12px; text-decoration: none; }
+.track-back:hover { color: var(--accent-green); }
+.track-state { padding: 45px; border: 1px solid var(--surface-border); background: var(--surface-bg); text-align: center; }
+.track-error { color: #df7777; }
+.track-hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; padding: 28px; border: 1px solid var(--surface-border); background: linear-gradient(120deg, rgba(14,31,45,.96), rgba(5,13,23,.9)); }
+.track-kicker { margin: 0 0 7px; color: var(--accent-green); font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; }
+.track-hero h1 { margin: 0; font-size: clamp(32px, 5vw, 58px); line-height: 1.05; }
+.track-artist { margin: 12px 0 4px; font-size: 19px; }
+.track-album { margin: 0; color: #7f8997; font-size: 13px; }
+.track-spotify { padding: 11px 14px; border: 1px solid var(--accent-green); color: var(--accent-green); font-size: 12px; text-decoration: none; white-space: nowrap; }
+.track-grid { display: grid; grid-template-columns: .8fr 1.2fr; gap: 14px; margin: 14px 0; }
+.track-panel { padding: 22px; border: 1px solid var(--surface-border); background: var(--surface-bg); }
+.track-panel h2 { margin: 0 0 18px; padding: 0; font-size: 20px; letter-spacing: 0; text-transform: none; }
+.track-panel h2::after { display: none; }
+.identity-row { display: flex; align-items: center; gap: 12px; }
+.identity-panel p, .muted { color: #8791a0; font-size: 12px; line-height: 1.55; }
+.profile-status { color: #9aa2af; font-size: 10px; font-weight: 600; letter-spacing: .8px; text-transform: uppercase; }
+.profile-status.matched, .profile-status.complete { color: var(--accent-green); }
+.profile-status.review { color: #f0ad4e; }.profile-status.error,.profile-status.missing { color: #df7777; }
+.candidate { display: flex; flex-direction: column; gap: 5px; margin-top: 17px; padding: 13px; border: 1px solid var(--surface-border); }
+.candidate small, .candidate span { color: #7e8998; font-size: 11px; }.candidate a { color: var(--accent-green); font-size: 11px; text-decoration: none; }
+.membership-summary { display: flex; align-items: baseline; gap: 8px; margin-bottom: 14px; }.membership-summary strong { color: var(--accent-green); font-size: 28px; }.membership-summary span { color: #8a94a2; font-size: 12px; }.membership-summary em { margin-left: auto; color: #df7777; font-size: 11px; font-style: normal; }.membership-summary em.liked { color: var(--accent-green); }
+.playlist-memberships { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }.playlist-memberships div { display: flex; justify-content: space-between; gap: 12px; padding: 9px 10px; border: 1px solid var(--surface-border); font-size: 12px; }.playlist-memberships small { color: #768191; }
+.membership-panel details { margin-top: 14px; color: #8791a0; font-size: 11px; }.membership-panel summary { cursor: pointer; }.not-in-playlists { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }.not-in-playlists span { padding: 4px 6px; border: 1px solid var(--surface-border); }
+.provider-panel { padding-bottom: 8px; }.profile-provider { padding: 17px 0; border-top: 1px solid var(--surface-border); }.profile-provider:first-child { border-top: 0; }.profile-provider header { display: flex; align-items: center; gap: 12px; margin-bottom: 11px; }.profile-provider h3 { margin: 0; color: var(--accent-green); font-size: 13px; text-transform: capitalize; }
+.profile-features { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }.profile-feature { min-width: 0; padding: 10px; border: 1px solid var(--surface-border); }.profile-feature small,.profile-feature strong,.profile-feature span { display: block; overflow-wrap: anywhere; }.profile-feature small { color: #7f8997; font-size: 9px; text-transform: capitalize; }.profile-feature strong { margin-top: 5px; font-size: 12px; }.profile-feature span { margin-top: 4px; color: #768191; font-size: 9px; }
+@media(max-width:800px){.track-hero{align-items:stretch;flex-direction:column}.track-grid{grid-template-columns:1fr}.profile-features{grid-template-columns:repeat(2,1fr)}.playlist-memberships{grid-template-columns:1fr}}

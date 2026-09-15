@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block extra_css %}<link rel="stylesheet" href="{{ url_for('static', path='css/track-profile.css') }}">{% endblock %}
+{% block content %}
+<main class="track-page" data-track-id="{{ track_id }}">
+    <a class="track-back" href="/health">← Library Health</a>
+    <section id="trackLoading" class="track-state">Loading local track profile...</section>
+    <section id="trackError" class="track-state track-error" hidden></section>
+    <div id="trackContent" hidden>
+        <header class="track-hero">
+            <div>
+                <p class="track-kicker">Local track profile</p>
+                <h1 id="trackName"></h1>
+                <p id="trackArtist" class="track-artist"></p>
+                <p id="trackAlbum" class="track-album"></p>
+            </div>
+            <a id="spotifyLink" class="track-spotify" target="_blank" rel="noopener">Open in Spotify ↗</a>
+        </header>
+
+        <section class="track-grid">
+            <article class="track-panel identity-panel">
+                <p class="track-kicker">Recording identity</p><h2>MusicBrainz decision</h2>
+                <div id="identityContent"></div>
+            </article>
+            <article class="track-panel membership-panel">
+                <p class="track-kicker">Your organization</p><h2>Playlist membership</h2>
+                <div id="membershipSummary" class="membership-summary"></div>
+                <div id="inPlaylists" class="playlist-memberships"></div>
+                <details><summary id="notInSummary"></summary><div id="notInPlaylists" class="not-in-playlists"></div></details>
+            </article>
+        </section>
+
+        <section class="track-panel provider-panel">
+            <p class="track-kicker">Cached evidence</p><h2>Provider observations</h2>
+            <div id="providerContent"></div>
+        </section>
+    </div>
+</main>
+<script>
+const trackId = document.querySelector(".track-page").dataset.trackId;
+const esc = value => String(value ?? "").replace(/[&<>'"]/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[char]);
+const display = value => Array.isArray(value)
+    ? value.slice(0, 20).map(item => item.name ? `${item.name}${item.count ? ` (${item.count})` : ""}` : item).join(", ")
+    : typeof value === "number" ? (Number.isInteger(value) ? value : value.toFixed(3).replace(/0+$/, "").replace(/\.$/, "")) : String(value ?? "—");
+const duration = ms => ms ? `${Math.floor(ms / 60000)}:${String(Math.round(ms / 1000) % 60).padStart(2, "0")}` : "Unknown duration";
+
+function renderIdentity(identity) {
+    if (!identity) return `<p class="muted">This track has not been matched yet.</p>`;
+    const candidate = identity.candidates?.[0];
+    const mbid = identity.musicbrainz_recording_id || candidate?.recording_id;
+    return `<div class="identity-row"><span class="profile-status ${esc(identity.match_status)}">${esc(identity.match_status)}</span><strong>${identity.confidence == null ? "—" : Math.round(identity.confidence * 100) + "%"}</strong></div>
+        <p>${esc(identity.decision_reason || "No decision explanation recorded.")}</p>
+        ${candidate ? `<div class="candidate"><small>Selected candidate</small><strong>${esc(candidate.title)}</strong><span>${esc(candidate.artists)} · ${duration(candidate.duration_ms)}</span>${mbid ? `<a href="https://musicbrainz.org/recording/${encodeURIComponent(mbid)}" target="_blank" rel="noopener">View on MusicBrainz ↗</a>` : ""}</div>` : ""}`;
+}
+
+function renderPlaylists(data) {
+    document.getElementById("membershipSummary").innerHTML = `<strong>${data.in_playlists.length}</strong><span>active playlists</span><em class="${data.is_liked ? "liked" : ""}">${data.is_liked ? "In Liked Songs" : "Not in Liked Songs"}</em>`;
+    document.getElementById("inPlaylists").innerHTML = data.in_playlists.map(p => `<div><span>${esc(p.name)}</span><small>${p.is_liked ? "Saved track" : `Position ${p.position + 1}`}</small></div>`).join("") || `<p class="muted">No active playlist memberships.</p>`;
+    document.getElementById("notInSummary").textContent = `Not in ${data.not_in_playlists.length} other active playlists`;
+    document.getElementById("notInPlaylists").innerHTML = data.not_in_playlists.map(p => `<span>${esc(p.name)}</span>`).join("");
+}
+
+function renderProviders(providers) {
+    const entries = Object.entries(providers);
+    document.getElementById("providerContent").innerHTML = entries.map(([name, result]) => {
+        const features = Object.entries(result.features || {}).map(([key, item]) => `<div class="profile-feature"><small>${esc(key.replaceAll("_", " "))}</small><strong>${esc(display(item.value))}</strong>${item.confidence == null ? "" : `<span>${Math.round(item.confidence * 100)}% confidence</span>`}</div>`).join("");
+        return `<article class="profile-provider"><header><h3>${esc(name)}</h3><span class="profile-status ${esc(result.status)}">${esc(result.status)}</span></header>${features ? `<div class="profile-features">${features}</div>` : `<p class="muted">${esc(result.reason || "No data returned.")}</p>`}</article>`;
+    }).join("") || `<p class="muted">No feature providers have been run for this track yet.</p>`;
+}
+
+async function loadTrack() {
+    try {
+        const response = await fetch(`/api/tracks/${encodeURIComponent(trackId)}`);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not load track profile");
+        document.title = `${data.track.name} · WrappedNow`;
+        document.getElementById("trackName").textContent = data.track.name;
+        document.getElementById("trackArtist").textContent = data.track.artists || "Unknown artist";
+        document.getElementById("trackAlbum").textContent = `${data.track.album_name || "Unknown album"} · ${duration(data.track.duration_ms)}`;
+        const spotify = document.getElementById("spotifyLink");
+        spotify.href = data.track.spotify_url || `https://open.spotify.com/track/${encodeURIComponent(trackId)}`;
+        document.getElementById("identityContent").innerHTML = renderIdentity(data.identity);
+        renderPlaylists(data); renderProviders(data.providers);
+        document.getElementById("trackLoading").hidden = true;
+        document.getElementById("trackContent").hidden = false;
+    } catch (error) {
+        document.getElementById("trackLoading").hidden = true;
+        const node = document.getElementById("trackError"); node.textContent = error.message; node.hidden = false;
+    }
+}
+loadTrack();
+</script>
+{% endblock %}

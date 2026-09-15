@@ -109,7 +109,7 @@ export function renderArtistFrequency(data, currentSelection) {
                 <div class="ws-artist-card">
                     <div class="ws-artist-label">Max Artists On Track</div>
                     <div class="ws-artist-value">
-                        <a href="https://open.spotify.com/track/${data.max_artist_track_id}" target="_blank">
+                        <a href="/track/${encodeURIComponent(data.max_artist_track_id)}">
                             ${truncateText(escapeHtml(data.max_artist_track_name), 30)}
                         </a>
                         <span>(${data.max_artists_on_track})</span>

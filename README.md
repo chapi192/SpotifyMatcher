@@ -1,0 +1,85 @@
+# WrappedNow
+
+WrappedNow is a local-first Spotify library analysis and organization workbench.
+It is designed primarily for one owner using Spotify Development Mode, either
+on a local PC or a private home server.
+
+The current application explicitly synchronizes all owned/collaborative
+playlists and Liked Songs, normalizes their metadata into SQLite, and visualizes
+selected library relationships and statistics. Playlist selection is a local
+analysis filter and does not make hidden Spotify requests. See [TODO.md](TODO.md)
+for the product direction and roadmap.
+
+## Local development
+
+1. Create a Spotify Development Mode app and add this redirect URI:
+
+   ```text
+   http://127.0.0.1:8000/callback
+   ```
+
+2. Copy `.env.example` to `.env` and fill in your Spotify credentials:
+
+   ```text
+   APP_ENV=development
+   SPOTIFY_CLIENT_ID=...
+   SPOTIFY_CLIENT_SECRET=...
+   SPOTIFY_REDIRECT_URI=http://127.0.0.1:8000/callback
+   SESSION_SECRET_KEY=replace-with-a-long-random-value
+   # Optional; defaults to data/wrappednow.sqlite3
+   MUSIC_DB_PATH=data/wrappednow.sqlite3
+   ```
+
+3. Install and run:
+
+   ```powershell
+   py -m venv venv
+   .\venv\Scripts\Activate.ps1
+   pip install -r requirements.txt
+   uvicorn web.app:app --reload --host 127.0.0.1 --port 8000
+   ```
+
+4. Open `http://127.0.0.1:8000`.
+
+### Linux development
+
+From the repository root:
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+cp .env.example .env
+# Edit .env before starting the application.
+python -m uvicorn web.app:app --reload --host 127.0.0.1 --port 8000
+```
+
+For access through an SSH tunnel, leave the application bound to loopback and
+run this on the computer with the web browser:
+
+```bash
+ssh -L 8000:127.0.0.1:8000 chris@YOUR_SERVER
+```
+
+Then open `http://127.0.0.1:8000`. This also allows the existing loopback
+Spotify callback to remain unchanged during initial server testing.
+
+Do not use `localhost` for Spotify OAuth. Spotify permits the loopback IP for
+local HTTP development, while a deployed callback must use HTTPS.
+
+## Home server direction
+
+The eventual server process will still be an ASGI server running
+`web.app:app`. Before exposing it beyond a trusted LAN or VPN:
+
+- set `APP_ENV=production`;
+- use a strong `SESSION_SECRET_KEY`;
+- put it behind an HTTPS reverse proxy;
+- configure the exact HTTPS `/callback` URL in Spotify's dashboard;
+- move OAuth tokens to server-side storage;
+- add an owner authentication layer; and
+- arrange automated backups of the SQLite database.
+
+Docker/Compose and reverse-proxy configuration are intentionally deferred until
+the local synchronization and catalog model settle.

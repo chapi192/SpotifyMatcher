@@ -27,10 +27,9 @@
     </div>
     <div id="globalProgressBar" class="global-progress"></div>
     <div class="nav-links">
-        <a href="/">Home</a>
-
         {% if request.session.get("token_info") %}
             <a href="/dashboard">Playlists</a> <!-- Dashboard -->
+            <a href="/health">Library Health</a>
             <a id="navWorkspace" class="nav-disabled" href="/workspace">Insights</a>
             <!-- <a id="navRecommendations" class="nav-disabled" href="/recommendations">Recommendations</a> -->
             <a href="/logout" onclick="handleLogout()">Logout</a>
@@ -77,7 +76,7 @@ async function refreshNavGating() {
         const res = await fetch("/api/nav-state");
         const data = await res.json();
 
-        const isBuilding = (data.build_status === "building");
+        const isBuilding = (data.build_status === "running");
         const hasSelection = !!data.has_selection;
         const hasData = !!data.has_playlist_data;
 
@@ -146,10 +145,10 @@ async function checkAndMaybeStartPolling() {
     if (pollingActive) return;
 
     try {
-        const res = await fetch("/api/build-progress");
+        const res = await fetch("/api/sync/status");
         const data = await res.json();
 
-        if (data.status === "building") {
+        if (data.status === "running") {
             pollingActive = true;
             pollBuildProgressLoop();
         }
@@ -161,7 +160,7 @@ async function checkAndMaybeStartPolling() {
 async function pollBuildProgressLoop() {
 
     try {
-        const res = await fetch("/api/build-progress");
+        const res = await fetch("/api/sync/status");
         const data = await res.json();
 
         if (data.status === "complete") {
@@ -180,27 +179,34 @@ async function pollBuildProgressLoop() {
             const counter = document.getElementById("buildCounter");
             if (counter) counter.textContent = "";
 
+            window.dispatchEvent(new CustomEvent("wrappednow:sync-finished", {
+                detail: {status: "complete"}
+            }));
+
             return;
         }
 
-        if (data.status !== "building") {
+        if (data.status !== "running") {
             pollingActive = false;
             resetProgressBar();
             refreshNavGating();
+            window.dispatchEvent(new CustomEvent("wrappednow:sync-finished", {
+                detail: {status: data.status}
+            }));
             return;
         }
 
-        const total = data.total_tracks || 1;
-        const current = data.tracks_processed || 0;
+        const sync = data.sync || {};
+        const total = sync.total_playlists || 1;
+        const current = sync.completed_playlists || 0;
 
         const counter = document.getElementById("buildCounter");
         if (counter) {
-            counter.textContent = `${current.toLocaleString()} / ${total.toLocaleString()}`;
+            counter.textContent = `${current.toLocaleString()} / ${total.toLocaleString()} playlists`;
         }
 
         if (optimisticCap === 0) {
-            const firstChunk = Math.min(100, total);
-            optimisticCap = firstChunk / total;
+            optimisticCap = Math.min(0.05, 1 / total);
             creepingActive = true;
         }
 

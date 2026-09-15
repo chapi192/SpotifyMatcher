@@ -38,6 +38,8 @@
     </div>
 
     <div class="dashboard-actions-right">
+        <button id="syncLibraryBtn" class="btn" onclick="startLibrarySync()">Sync Library</button>
+        <span id="syncStatusText" style="font-size:12px;opacity:0.7;"></span>
         <button class="btn" onclick="selectAll()">Select All</button>
         <button class="btn" onclick="deselectAll()">Deselect All</button>
         <button id="toggleNonUserBtn" class="btn" onclick="toggleNonUserPlaylists()">
@@ -147,18 +149,55 @@ async function loadPlaylists() {
     refreshNavGating();
 }
 
-async function waitForBuildCompletion() {
+async function startLibrarySync() {
+    const button = document.getElementById("syncLibraryBtn");
+    const status = document.getElementById("syncStatusText");
+    button.disabled = true;
+    status.textContent = "Starting sync...";
 
-    while (true) {
-
-        const res = await fetch("/api/build-progress");
-        const data = await res.json();
-
-        if (data.status !== "building") break;
-
-        await new Promise(r => setTimeout(r, 400));
+    try {
+        const response = await fetch("/api/sync", {method: "POST"});
+        const data = await response.json();
+        if (!response.ok && response.status !== 409) {
+            throw new Error(data.error || "Could not start synchronization");
+        }
+        status.textContent = response.status === 409 ? "Sync already running" : "Sync running";
+        checkAndMaybeStartPolling();
+    } catch (error) {
+        status.textContent = error.message;
+        button.disabled = false;
     }
 }
+
+async function refreshSyncStatus() {
+    const button = document.getElementById("syncLibraryBtn");
+    const status = document.getElementById("syncStatusText");
+    const response = await fetch("/api/sync/status");
+    if (!response.ok) return;
+    const data = await response.json();
+    const sync = data.sync;
+
+    button.disabled = data.status === "running";
+    if (!sync) {
+        status.textContent = "Library has not been synced";
+    } else if (data.status === "running") {
+        status.textContent = `Syncing ${sync.current_playlist || "library"} · ${sync.completed_playlists}/${sync.total_playlists}`;
+    } else if (data.status === "error") {
+        status.textContent = `Last sync failed: ${sync.error || "unknown error"}`;
+    } else if (data.status === "complete") {
+        const duration = sync.elapsed_seconds == null ? "" : ` in ${sync.elapsed_seconds}s`;
+        status.textContent = `Synced ${sync.completed_playlists} playlists${duration} · ${sync.new_playlists} new · ${sync.changed_playlists} changed · ${sync.skipped_playlists} unchanged · ${sync.removed_playlists} removed · tracks +${sync.added_tracks}/-${sync.removed_tracks} · enrichment continues in background`;
+    } else {
+        status.textContent = `Last sync ${data.status}`;
+    }
+}
+
+window.addEventListener("wrappednow:sync-finished", async (event) => {
+    await refreshSyncStatus();
+    if (event.detail?.status === "complete") {
+        await loadPlaylists();
+    }
+});
 
 function rgbToHsl(r, g, b){
 
@@ -625,7 +664,7 @@ function scheduleSelectionUpdate() {
 }
 
 async function sendSelectionUpdate() {
-    await fetch("/api/selection", {
+    const response = await fetch("/api/selection", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
@@ -634,24 +673,10 @@ async function sendSelectionUpdate() {
         })
     });
 
-    // show bar only if build actually started
-    const progressRes = await fetch("/api/build-progress");
-    const progressData = await progressRes.json();
-
-    if (progressData.status === "building") {
-
-        const bar = document.getElementById("globalProgressBar");
-        if (bar) bar.style.opacity = "1";
-
-        progressCurrent = 0.02;
-        progressTarget = 0.02;
-        optimisticCap = 0;
-        creepingActive = true;
-
-        checkAndMaybeStartPolling();
-
-    } else {
-        resetProgressBar();
+    const data = await response.json();
+    if (data.status === "sync_required") {
+        document.getElementById("syncStatusText").textContent =
+            "Some selected playlists need a library sync";
     }
 
     refreshNavGating();
@@ -660,23 +685,7 @@ async function sendSelectionUpdate() {
 initDashboard();
 
 async function initDashboard() {
-
-    const res = await fetch("/api/nav-state");
-    const state = await res.json();
-
-    if (state.has_selection && !state.has_playlist_data) {
-
-        showLoader("Restoring your playlists...");
-
-        await fetch("/api/build", {
-            method: "POST"
-        });
-
-        // wait until build actually finishes
-        await waitForBuildCompletion();
-    }
-
-    await loadPlaylists();
+    await Promise.all([loadPlaylists(), refreshSyncStatus()]);
 }
 
 </script>
