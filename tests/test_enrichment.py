@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 from web import catalog
 from web.services.musicbrainz import _search_title, match_recording
 from web.services import feature_providers
+from web.routes.enrichment import run_full_enrichment_pipeline
 
 
 class MusicBrainzTests(unittest.TestCase):
@@ -173,6 +174,24 @@ class FeatureProviderTests(unittest.TestCase):
         result = feature_providers.reccobeats({"name": "Song", "artists": "Artist", "duration_ms": 180000})
         self.assertEqual(result, [])
         self.assertEqual(get.call_count, 1)
+
+    @patch("web.routes.enrichment._run_feature_job")
+    @patch("web.routes.enrichment._run_musicbrainz_job")
+    @patch("web.routes.enrichment.begin_feature_enrichment_job")
+    @patch("web.routes.enrichment.begin_enrichment_job")
+    def test_full_pipeline_runs_identity_then_every_provider(
+        self, begin_identity, begin_feature, run_identity, run_feature
+    ):
+        begin_identity.return_value = 1
+        begin_feature.side_effect = [2, 3, 4]
+
+        run_full_enrichment_pipeline("user-1")
+
+        run_identity.assert_called_once_with(1, "user-1", 10000)
+        self.assertEqual(
+            [call.args[2] for call in run_feature.call_args_list],
+            ["acousticbrainz", "listenbrainz", "reccobeats"],
+        )
 
 
 if __name__ == "__main__":

@@ -24,6 +24,7 @@ from web.spotify_auth import get_user_id
 
 
 router = APIRouter()
+FULL_CATALOG_LIMIT = 10000
 
 
 def _run_musicbrainz_job(job_id: int, user_id: str, batch_limit: int) -> None:
@@ -94,6 +95,41 @@ def _run_feature_job(job_id: int, user_id: str, provider: str, batch_limit: int)
     except Exception as exc:
         traceback.print_exc()
         finish_enrichment_job(job_id, "error", str(exc)[:1000])
+
+
+def run_full_enrichment_pipeline(user_id: str) -> None:
+    """Fill every uncached identity and provider result, one durable job at a time."""
+    musicbrainz_job = begin_enrichment_job(user_id, "musicbrainz", FULL_CATALOG_LIMIT)
+    if musicbrainz_job is None:
+        return
+    _run_musicbrainz_job(musicbrainz_job, user_id, FULL_CATALOG_LIMIT)
+
+    for provider in PROVIDERS:
+        job_id = begin_feature_enrichment_job(user_id, provider, FULL_CATALOG_LIMIT)
+        if job_id is None:
+            return
+        _run_feature_job(job_id, user_id, provider, FULL_CATALOG_LIMIT)
+
+
+def launch_full_enrichment(user_id: str) -> threading.Thread:
+    worker = threading.Thread(
+        target=run_full_enrichment_pipeline, args=(user_id,), daemon=True,
+        name=f"full-enrichment-{user_id}",
+    )
+    worker.start()
+    return worker
+
+
+@router.post("/api/enrichment/all")
+def start_full_enrichment(request: Request):
+    user_id = _authenticated_user(request)
+    if not user_id:
+        return JSONResponse({"error": "Not logged in"}, status_code=401)
+    current = enrichment_status(user_id).get("job")
+    if current and current["status"] == "running":
+        return JSONResponse({"error": "Enrichment is already running"}, status_code=409)
+    launch_full_enrichment(user_id)
+    return {"status": "started"}
 
 
 def _authenticated_user(request: Request):

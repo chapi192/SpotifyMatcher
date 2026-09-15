@@ -170,6 +170,8 @@ def _run_sync(run_id: int, user_id: str, token_info: dict) -> None:
             )
 
         finish_sync_run(run_id, "complete")
+        from web.routes.enrichment import launch_full_enrichment
+        launch_full_enrichment(user_id)
     except Exception as exc:
         traceback.print_exc()
         finish_sync_run(run_id, "error", error=str(exc)[:1000])

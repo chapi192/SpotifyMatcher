@@ -38,6 +38,7 @@
                 <button class="btn provider-btn" data-provider="acousticbrainz" type="button">AcousticBrainz</button>
                 <button class="btn provider-btn" data-provider="listenbrainz" type="button">ListenBrainz</button>
                 <button class="btn provider-btn" data-provider="reccobeats" type="button">ReccoBeats</button>
+                <button id="enrichAllBtn" class="btn enrich-all-btn" type="button">Run all remaining</button>
             </div>
         </section>
         <section id="featureComparison" class="match-review" hidden>
@@ -249,6 +250,17 @@ document.querySelectorAll(".provider-btn").forEach(button => button.addEventList
     }
     await refreshEnrichmentStatus();
 }));
+
+document.getElementById("enrichAllBtn").addEventListener("click", async () => {
+    document.getElementById("enrichmentStatusText").textContent = "Starting full cached enrichment...";
+    const response = await fetch("/api/enrichment/all", {method: "POST"});
+    const data = await response.json();
+    if (!response.ok && response.status !== 409) {
+        document.getElementById("enrichmentStatusText").textContent = data.error || "Could not start enrichment";
+        return;
+    }
+    await refreshEnrichmentStatus();
+});
 
 function displayFeature(value) {
     if (Array.isArray(value)) return value.slice(0, 8).map(item => item.name || item).join(", ");

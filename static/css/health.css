@@ -10,6 +10,7 @@
 .enrichment-panel .btn:disabled { cursor: wait; opacity: .45; }
 .enrichment-actions { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .provider-btn { padding-left: 8px; padding-right: 8px; }
+.enrich-all-btn { border-color: var(--accent-green) !important; background: rgba(29,185,84,.1) !important; }
 .enrichment-actions label { color: #858e9d; font-size: 11px; text-transform: uppercase; }
 .health-select { padding: 6px 28px 6px 9px; border: 1px solid var(--surface-border); border-radius: 0; background: #081321; color: var(--text-main); }
 .match-review { margin-bottom: 14px; border: 1px solid var(--surface-border); background: var(--surface-bg); }

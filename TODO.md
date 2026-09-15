@@ -78,6 +78,8 @@ home server. Spotify Development Mode is sufficient for this use case.
   enrichment adapters with permanently cached normalized observations.
 - [x] Add a side-by-side provider inspection view for actual returned features,
   coverage failures, confidence, and semantic tags.
+- [x] Automatically run the complete cached enrichment pipeline after every
+  Spotify library sync, processing only new, failed, or otherwise uncached data.
 - [ ] Recommend existing destinations for newly liked or unfiled tracks.
 - [ ] Score matches using artists, albums, genres/tags, era, and the owner's
   previous filing decisions.

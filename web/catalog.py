@@ -747,7 +747,7 @@ def library_health(user_id: str, detail_limit: int = 250) -> dict:
 
 def begin_enrichment_job(user_id: str, provider: str, batch_limit: int = 25) -> int | None:
     initialize_catalog()
-    batch_limit = max(1, min(int(batch_limit), 100))
+    batch_limit = max(1, min(int(batch_limit), 10000))
     with _DB_LOCK, closing(_connect()) as db, db:
         if db.execute(
             "SELECT 1 FROM enrichment_jobs WHERE user_id = ? AND status = 'running'",
@@ -774,7 +774,7 @@ def begin_enrichment_job(user_id: str, provider: str, batch_limit: int = 25) -> 
 
 def enrichment_candidates(user_id: str, limit: int | None = None) -> list[dict]:
     initialize_catalog()
-    limit = max(1, min(int(limit), 100)) if limit is not None else None
+    limit = max(1, min(int(limit), 10000)) if limit is not None else None
     with _DB_LOCK, closing(_connect()) as db, db:
         rows = db.execute(
             """
@@ -887,7 +887,7 @@ def enrichment_status(user_id: str) -> dict:
 
 def feature_enrichment_candidates(user_id: str, provider: str, limit: int = 25) -> list[dict]:
     initialize_catalog()
-    limit = max(1, min(int(limit), 100))
+    limit = max(1, min(int(limit), 10000))
     with _DB_LOCK, closing(_connect()) as db, db:
         rows = db.execute(
             """
@@ -910,7 +910,7 @@ def feature_enrichment_candidates(user_id: str, provider: str, limit: int = 25) 
 
 def begin_feature_enrichment_job(user_id: str, provider: str, batch_limit: int = 25) -> int | None:
     initialize_catalog()
-    batch_limit = max(1, min(int(batch_limit), 100))
+    batch_limit = max(1, min(int(batch_limit), 10000))
     with _DB_LOCK, closing(_connect()) as db, db:
         if db.execute(
             "SELECT 1 FROM enrichment_jobs WHERE user_id = ? AND status = 'running'",

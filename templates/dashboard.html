@@ -186,7 +186,7 @@ async function refreshSyncStatus() {
         status.textContent = `Last sync failed: ${sync.error || "unknown error"}`;
     } else if (data.status === "complete") {
         const duration = sync.elapsed_seconds == null ? "" : ` in ${sync.elapsed_seconds}s`;
-        status.textContent = `Synced ${sync.completed_playlists} playlists${duration} · ${sync.new_playlists} new · ${sync.changed_playlists} changed · ${sync.skipped_playlists} unchanged · ${sync.removed_playlists} removed · tracks +${sync.added_tracks}/-${sync.removed_tracks}`;
+        status.textContent = `Synced ${sync.completed_playlists} playlists${duration} · ${sync.new_playlists} new · ${sync.changed_playlists} changed · ${sync.skipped_playlists} unchanged · ${sync.removed_playlists} removed · tracks +${sync.added_tracks}/-${sync.removed_tracks} · enrichment continues in background`;
     } else {
         status.textContent = `Last sync ${data.status}`;
     }

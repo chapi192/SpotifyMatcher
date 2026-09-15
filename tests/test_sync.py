@@ -79,8 +79,9 @@ class SyncWorkerTests(unittest.TestCase):
     @patch("web.routes.sync.fetch_single_playlist")
     @patch("web.routes.sync._fetch_sync_targets")
     @patch("web.routes.sync.spotipy.Spotify")
+    @patch("web.routes.enrichment.launch_full_enrichment")
     def test_worker_persists_dataset_and_completes_run(
-        self, spotify_class, fetch_targets, fetch_playlist
+        self, launch_enrichment, spotify_class, fetch_targets, fetch_playlist
     ):
         fetch_targets.return_value = [{
             "id": "playlist-1",
@@ -114,6 +115,7 @@ class SyncWorkerTests(unittest.TestCase):
         self.assertEqual(sync["new_playlists"], 1)
         self.assertEqual(sync["changed_playlists"], 0)
         self.assertEqual(sync["skipped_playlists"], 0)
+        launch_enrichment.assert_called_once_with("user-1")
         self.assertIsNotNone(catalog.load_playlist_dataset("user-1", "playlist-1"))
         spotify_class.assert_called_once()
 
