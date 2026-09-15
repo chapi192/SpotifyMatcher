@@ -26,13 +26,14 @@ home server. Spotify Development Mode is sufficient for this use case.
 - [x] Restore persisted playlist datasets after a server restart.
 - [x] Accept both Spotify's old `tracks/track` and 2026 `items/item` shapes.
 - [x] Replace removed batch artist hydration with individual cached requests.
-- [ ] Add an explicit "Sync library" screen and sync all owned/collaborative
+- [x] Add an explicit "Sync library" screen and sync all owned/collaborative
   playlists without requiring dashboard selection.
 - [ ] Record sync runs, failures, additions, removals, and moves as historical
   events instead of only retaining the latest state.
 - [ ] Move OAuth tokens out of the signed browser cookie into server-side
   storage.
-- [ ] Replace process-local job state with a persistent job table or Redis.
+- [x] Persist synchronization status and error details in a SQLite job table.
+- [ ] Resume interrupted synchronization jobs automatically.
 - [ ] Add retry ceilings and clear errors for quota exhaustion versus temporary
   Spotify rate limiting.
 
@@ -88,4 +89,3 @@ home server. Spotify Development Mode is sufficient for this use case.
 - [ ] Add an application-level owner login if the server is reachable outside
   the trusted network.
 - [ ] Add automated database and synchronization tests.
-

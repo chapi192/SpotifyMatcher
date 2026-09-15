@@ -5,7 +5,7 @@ import hmac
 import secrets
 
 from web.spotify_auth import build_oauth, get_user_id, get_spotify_client
-from web.state import USER_BUILD_STATE, PLAYLIST_DATA_CACHE, PLAYLIST_CACHE, BUILD_STATE
+from web.state import PLAYLIST_DATA_CACHE, PLAYLIST_CACHE
 
 router = APIRouter()
 
@@ -21,10 +21,8 @@ def logout(request: Request):
     sp = get_spotify_client(request)
     if sp:
         user_id = get_user_id(request)
-        USER_BUILD_STATE.pop(user_id, None)
         PLAYLIST_DATA_CACHE.pop(user_id, None)
         PLAYLIST_CACHE.pop(user_id, None)
-        BUILD_STATE.pop(user_id, None)
 
     request.session.clear()
     response = RedirectResponse(url="/", status_code=302)

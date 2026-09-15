@@ -1,6 +1,7 @@
 import os
 import time
 from spotipy.oauth2 import SpotifyOAuth
+from spotipy.cache_handler import MemoryCacheHandler
 import spotipy
 from fastapi import Request
 
@@ -11,8 +12,12 @@ SCOPES = [
     "user-library-read",
 ]
 
-def build_oauth(request: Request, state: str | None = None):
-    redirect_uri = os.getenv("SPOTIFY_REDIRECT_URI") or str(request.url_for("callback")).replace("http://", "https://")
+def build_oauth(request: Request | None, state: str | None = None, token_info: dict | None = None):
+    redirect_uri = os.getenv("SPOTIFY_REDIRECT_URI")
+    if not redirect_uri and request is not None:
+        redirect_uri = str(request.url_for("callback")).replace("http://", "https://")
+    if not redirect_uri:
+        raise RuntimeError("SPOTIFY_REDIRECT_URI is required")
 
     return SpotifyOAuth(
         client_id=os.getenv("SPOTIFY_CLIENT_ID"),
@@ -21,7 +26,7 @@ def build_oauth(request: Request, state: str | None = None):
         scope=" ".join(SCOPES),
         state=state,
         show_dialog=True,
-        cache_handler=None
+        cache_handler=MemoryCacheHandler(token_info)
     )
 
 def is_token_expired(token_info: dict) -> bool:
@@ -42,15 +47,13 @@ def get_spotify_client(request: Request):
     if not token_info:
         return None
 
-    oauth = build_oauth(request)
+    oauth = build_oauth(request, token_info=token_info)
     token_info = refresh_if_needed(oauth, token_info)
 
     if not token_info:
         return None
 
     request.session["token_info"] = token_info
-    oauth.token_info = token_info
-
     return spotipy.Spotify(auth_manager=oauth)
 
 def get_user_id(request: Request):

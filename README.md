@@ -4,9 +4,11 @@ WrappedNow is a local-first Spotify library analysis and organization workbench.
 It is designed primarily for one owner using Spotify Development Mode, either
 on a local PC or a private home server.
 
-The current application can select owned playlists and Liked Songs, normalize
-their metadata, persist it in SQLite, and visualize library relationships and
-statistics. See [TODO.md](TODO.md) for the product direction and roadmap.
+The current application explicitly synchronizes all owned/collaborative
+playlists and Liked Songs, normalizes their metadata into SQLite, and visualizes
+selected library relationships and statistics. Playlist selection is a local
+analysis filter and does not make hidden Spotify requests. See [TODO.md](TODO.md)
+for the product direction and roadmap.
 
 ## Local development
 

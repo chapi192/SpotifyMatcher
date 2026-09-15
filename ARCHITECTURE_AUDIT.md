@@ -4,6 +4,22 @@ This audit describes the application after the first local-first persistence
 pass. It is a diagnosis and prioritization document; most findings are not yet
 implemented.
 
+## Resolved in the synchronization milestone
+
+- Replaced the nonexistent `/api/build` flow with `POST /api/sync` and durable
+  `GET /api/sync/status` reporting.
+- Playlist selection no longer starts Spotify network work.
+- Selected/hidden IDs moved from the size-limited session cookie to SQLite.
+- Sync status and terminal errors are persisted; abandoned running jobs are
+  marked interrupted at startup.
+- Unchanged owned playlists are skipped using Spotify snapshot IDs.
+- Persisted artist enrichment is loaded before new Spotify artist requests.
+- Spotipy now uses an in-memory token handler instead of its implicit shared
+  `.cache` file.
+
+The findings below remain useful as the original audit record. Items listed
+above should be read as historical context where they overlap.
+
 ## Current behavior
 
 1. `/` now redirects to `/dashboard`, which redirects unauthenticated requests

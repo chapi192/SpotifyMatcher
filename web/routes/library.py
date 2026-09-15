@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 
 from web.spotify_auth import get_spotify_client, build_oauth
 from web.state import PLAYLIST_DATA_CACHE
-from web.catalog import load_playlist_dataset
+from web.catalog import load_playlist_dataset, load_selection
 from web.services.profile_library import build_playlist_profiles
 
 router = APIRouter()
@@ -10,7 +10,7 @@ router = APIRouter()
 def get_active_dataset_and_profiles(request: Request, sp):
     from web.spotify_auth import get_user_id
     user_id = get_user_id(request)
-    selected_ids = request.session.get("selected_playlists", [])
+    selected_ids = load_selection(user_id)["selected_ids"]
 
     if not selected_ids:
         return None, None, {"status": "empty"}

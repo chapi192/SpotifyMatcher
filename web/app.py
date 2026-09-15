@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from .routes import router
-from .catalog import initialize_catalog
+from .catalog import initialize_catalog, recover_interrupted_sync_runs
 import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -33,4 +33,5 @@ app.add_middleware(
 )
 
 initialize_catalog()
+recover_interrupted_sync_runs()
 app.include_router(router)
