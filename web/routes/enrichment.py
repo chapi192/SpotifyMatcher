@@ -1,6 +1,8 @@
 import threading
 import traceback
 
+import requests
+
 from fastapi import APIRouter, Body, Request
 from fastapi.responses import JSONResponse
 
@@ -20,12 +22,18 @@ router = APIRouter()
 
 
 def _run_musicbrainz_job(job_id: int, user_id: str, batch_limit: int) -> None:
-    completed = matched = review = missing = 0
+    completed = matched = review = missing = failed = 0
     try:
         candidates = enrichment_candidates(user_id, batch_limit)
         for index, track in enumerate(candidates):
             update_enrichment_job(job_id, current_track=track["name"] or track["track_id"])
-            result = match_recording(track)
+            try:
+                result = match_recording(track)
+            except requests.RequestException:
+                result = {
+                    "recording_id": None, "status": "error", "method": "isrc" if track.get("isrc") else "metadata",
+                    "confidence": None, "candidates": [],
+                }
             save_track_identity(
                 track["track_id"], recording_id=result["recording_id"],
                 status=result["status"], method=result["method"],
@@ -35,9 +43,10 @@ def _run_musicbrainz_job(job_id: int, user_id: str, batch_limit: int) -> None:
             matched += int(result["status"] == "matched")
             review += int(result["status"] == "review")
             missing += int(result["status"] == "missing")
+            failed += int(result["status"] == "error")
             update_enrichment_job(
                 job_id, completed_tracks=completed, matched_tracks=matched,
-                review_tracks=review, missing_tracks=missing,
+                review_tracks=review, missing_tracks=missing, failed_tracks=failed,
             )
             if index < len(candidates) - 1:
                 respectful_pause()

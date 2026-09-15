@@ -67,6 +67,8 @@ home server. Spotify Development Mode is sufficient for this use case.
 - [x] Add a cached, rate-limited MusicBrainz identity-matching first pass.
 - [x] Support bounded 10–100 track matching batches with visible match decisions
   so provider quality can be vetted before catalog-wide enrichment.
+- [x] Retry MusicBrainz throttling/capacity responses and isolate temporary
+  provider failures to individual tracks without losing batch progress.
 - [ ] Add review controls for uncertain MusicBrainz matches.
 - [ ] Add AcousticBrainz, ListenBrainz, and optional ReccoBeats enrichment
   adapters after identity matches have been reviewed.

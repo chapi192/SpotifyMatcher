@@ -174,6 +174,7 @@ def initialize_catalog() -> None:
                 matched_tracks INTEGER NOT NULL DEFAULT 0,
                 review_tracks INTEGER NOT NULL DEFAULT 0,
                 missing_tracks INTEGER NOT NULL DEFAULT 0,
+                failed_tracks INTEGER NOT NULL DEFAULT 0,
                 current_track TEXT,
                 error TEXT
             );
@@ -217,6 +218,8 @@ def initialize_catalog() -> None:
         enrichment_columns = {row["name"] for row in db.execute("PRAGMA table_info(enrichment_jobs)")}
         if "batch_limit" not in enrichment_columns:
             db.execute("ALTER TABLE enrichment_jobs ADD COLUMN batch_limit INTEGER")
+        if "failed_tracks" not in enrichment_columns:
+            db.execute("ALTER TABLE enrichment_jobs ADD COLUMN failed_tracks INTEGER NOT NULL DEFAULT 0")
 
 
 
@@ -800,7 +803,7 @@ def save_track_identity(track_id: str, *, recording_id: str | None, status: str,
 
 
 def update_enrichment_job(job_id: int, **values) -> None:
-    allowed = {"completed_tracks", "matched_tracks", "review_tracks", "missing_tracks", "current_track", "error"}
+    allowed = {"completed_tracks", "matched_tracks", "review_tracks", "missing_tracks", "failed_tracks", "current_track", "error"}
     updates = {key: value for key, value in values.items() if key in allowed}
     if not updates:
         return

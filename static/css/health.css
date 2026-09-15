@@ -19,6 +19,7 @@
 .match-legend .matched, .match-status.matched { color: var(--accent-green); }
 .match-legend .review, .match-status.review { color: #f0ad4e; }
 .match-legend .missing, .match-status.missing { color: #df7777; }
+.match-legend .error, .match-status.error { color: #9aa2af; }
 .match-status { font-size: 10px; font-weight: 600; letter-spacing: .7px; text-transform: uppercase; }
 .match-table { min-width: 900px; }
 .match-table th:first-child, .match-table td:first-child { width: 20%; }

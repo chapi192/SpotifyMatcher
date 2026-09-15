@@ -7,10 +7,24 @@ import requests
 
 BASE_URL = "https://musicbrainz.org/ws/2"
 USER_AGENT = "WrappedNow/0.1 (personal local music organizer)"
+MAX_ATTEMPTS = 4
 
 
 def _lucene(value: str) -> str:
     return re.sub(r'([+\-&|!(){}\[\]^"~*?:\\/])', r'\\\1', value or "").strip()
+
+
+def _search_title(value: str) -> str:
+    value = (value or "").strip().strip('"“”')
+    value = re.sub(
+        r"\s*[-–—]\s*(?:\d{4}\s+)?(?:re)?master(?:ed)?(?:\s+version)?\s*$",
+        "", value, flags=re.IGNORECASE,
+    )
+    value = re.sub(
+        r"\s*\((?:\d{4}\s+)?(?:re)?master(?:ed)?(?:\s+version)?\)\s*$",
+        "", value, flags=re.IGNORECASE,
+    )
+    return value.strip().strip('"“”')
 
 
 def _candidate(recording: dict) -> dict:
@@ -33,18 +47,29 @@ def match_recording(track: dict, session=requests) -> dict:
         url = f"{BASE_URL}/isrc/{quote(track['isrc'])}"
         method = "isrc"
     else:
-        parts = [f'recording:"{_lucene(track.get("name"))}"']
+        parts = [f'recording:"{_lucene(_search_title(track.get("name")))}"']
         if track.get("artists"):
             parts.append(f'artist:"{_lucene(track["artists"].split(",")[0])}"')
         query = " AND ".join(parts)
         url = f"{BASE_URL}/recording?query={quote(query)}&limit=5"
         method = "metadata"
 
-    response = session.get(
-        url,
-        headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
-        timeout=20,
-    )
+    response = None
+    for attempt in range(MAX_ATTEMPTS):
+        response = session.get(
+            url,
+            headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
+            timeout=20,
+        )
+        if response.status_code not in {429, 503}:
+            break
+        if attempt < MAX_ATTEMPTS - 1:
+            retry_after = response.headers.get("Retry-After")
+            try:
+                delay = float(retry_after) if retry_after else 2 ** attempt
+            except (TypeError, ValueError):
+                delay = 2 ** attempt
+            time.sleep(min(max(delay, 1.05), 30))
     response.raise_for_status()
     payload = response.json()
     recordings = payload.get("recordings") or []
@@ -52,16 +77,22 @@ def match_recording(track: dict, session=requests) -> dict:
     if not candidates:
         return {"status": "missing", "method": method, "recording_id": None, "confidence": None, "candidates": []}
 
-    best = candidates[0]
-    score = 100 if method == "isrc" and len(candidates) == 1 else best["score"]
     expected_duration = track.get("duration_ms")
-    actual_duration = best.get("duration_ms")
-    if expected_duration and actual_duration:
+    def adjusted_score(candidate: dict) -> int:
+        score = 100 if method == "isrc" else candidate["score"]
+        actual_duration = candidate.get("duration_ms")
+        if not expected_duration or not actual_duration:
+            return score
         difference = abs(expected_duration - actual_duration)
         if difference > 10000:
             score -= 20
         elif difference > 5000:
             score -= 8
+        return score
+
+    candidates.sort(key=adjusted_score, reverse=True)
+    best = candidates[0]
+    score = adjusted_score(best)
 
     status = "matched" if score >= 90 else "review"
     return {

@@ -39,7 +39,7 @@
         <section id="matchReview" class="match-review" hidden>
             <div class="match-review-header">
                 <div><p class="health-kicker">Latest decisions</p><h3>MusicBrainz Match Review</h3></div>
-                <div class="match-legend"><span class="matched">Confident</span><span class="review">Review</span><span class="missing">Missing</span></div>
+                <div class="match-legend"><span class="matched">Confident</span><span class="review">Review</span><span class="missing">Missing</span><span class="error">Retry later</span></div>
             </div>
             <div class="health-table-wrap">
                 <table class="health-table match-table">
@@ -194,7 +194,7 @@ async function refreshEnrichmentStatus() {
     if (job?.status === "running") {
         button.disabled = true;
         document.getElementById("enrichmentStatusText").textContent =
-            `Matching ${job.current_track || "catalog"} · ${job.completed_tracks.toLocaleString()} / ${job.total_tracks.toLocaleString()} · ${job.matched_tracks.toLocaleString()} confident · ${job.review_tracks.toLocaleString()} need review`;
+            `Matching ${job.current_track || "catalog"} · ${job.completed_tracks.toLocaleString()} / ${job.total_tracks.toLocaleString()} · ${job.matched_tracks.toLocaleString()} confident · ${job.review_tracks.toLocaleString()} need review · ${(job.failed_tracks || 0).toLocaleString()} retry later`;
         if (!enrichmentPolling) {
             enrichmentPolling = true;
             setTimeout(async () => { enrichmentPolling = false; await refreshEnrichmentStatus(); }, 1500);
@@ -203,7 +203,8 @@ async function refreshEnrichmentStatus() {
         button.disabled = false;
         const summary = `${counts.matched.toLocaleString()} matched · ${counts.review.toLocaleString()} need review · ${counts.missing.toLocaleString()} not found`;
         document.getElementById("enrichmentStatusText").textContent = job?.status === "error"
-            ? `Last match stopped: ${job.error}. Saved progress is intact. ${summary}` : summary;
+            ? `The batch stopped unexpectedly. Saved progress is intact; you can safely retry. ${summary}`
+            : `${summary}${job?.failed_tracks ? ` · ${job.failed_tracks.toLocaleString()} temporarily unavailable and ready to retry` : ""}`;
         button.textContent = counts.checked ? "Match another batch" : "Match sample";
     }
 }
