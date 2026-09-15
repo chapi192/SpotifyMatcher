@@ -745,7 +745,9 @@ def library_health(user_id: str, detail_limit: int = 250) -> dict:
     }
 
 
-def begin_enrichment_job(user_id: str, provider: str, batch_limit: int = 25) -> int | None:
+def begin_enrichment_job(
+    user_id: str, provider: str, batch_limit: int = 25, *, retry_unsuccessful: bool = False,
+) -> int | None:
     initialize_catalog()
     batch_limit = max(1, min(int(batch_limit), 10000))
     with _DB_LOCK, closing(_connect()) as db, db:
@@ -760,9 +762,12 @@ def begin_enrichment_job(user_id: str, provider: str, batch_limit: int = 25) -> 
             JOIN playlists p ON p.user_id = pt.user_id AND p.playlist_id = pt.playlist_id
             LEFT JOIN track_identities ti ON ti.track_id = pt.track_id
             WHERE pt.user_id = ? AND p.is_active = 1
-              AND (ti.track_id IS NULL OR ti.match_status IN ('pending', 'error'))
+              AND (
+                  ti.track_id IS NULL OR ti.match_status IN ('pending', 'error')
+                  OR (? = 1 AND ti.manually_locked = 0 AND ti.match_status IN ('missing', 'review'))
+              )
             """,
-            (user_id,),
+            (user_id, int(retry_unsuccessful)),
         ).fetchone()[0]
         total = min(total, batch_limit)
         cursor = db.execute(
@@ -772,7 +777,9 @@ def begin_enrichment_job(user_id: str, provider: str, batch_limit: int = 25) -> 
         return int(cursor.lastrowid)
 
 
-def enrichment_candidates(user_id: str, limit: int | None = None) -> list[dict]:
+def enrichment_candidates(
+    user_id: str, limit: int | None = None, *, retry_unsuccessful: bool = False,
+) -> list[dict]:
     initialize_catalog()
     limit = max(1, min(int(limit), 10000)) if limit is not None else None
     with _DB_LOCK, closing(_connect()) as db, db:
@@ -786,11 +793,14 @@ def enrichment_candidates(user_id: str, limit: int | None = None) -> list[dict]:
             JOIN playlists p ON p.user_id = pt.user_id AND p.playlist_id = pt.playlist_id
             LEFT JOIN track_identities ti ON ti.track_id = t.track_id
             WHERE pt.user_id = ? AND p.is_active = 1
-              AND (ti.track_id IS NULL OR ti.match_status IN ('pending', 'error'))
+              AND (
+                  ti.track_id IS NULL OR ti.match_status IN ('pending', 'error')
+                  OR (? = 1 AND ti.manually_locked = 0 AND ti.match_status IN ('missing', 'review'))
+              )
             ORDER BY t.name COLLATE NOCASE, t.track_id
             LIMIT COALESCE(?, -1)
             """,
-            (user_id, limit),
+            (user_id, int(retry_unsuccessful), limit),
         ).fetchall()
     return [dict(row) for row in rows]
 
@@ -885,7 +895,9 @@ def enrichment_status(user_id: str) -> dict:
     }
 
 
-def feature_enrichment_candidates(user_id: str, provider: str, limit: int = 25) -> list[dict]:
+def feature_enrichment_candidates(
+    user_id: str, provider: str, limit: int = 25, *, retry_unsuccessful: bool = False,
+) -> list[dict]:
     initialize_catalog()
     limit = max(1, min(int(limit), 10000))
     with _DB_LOCK, closing(_connect()) as db, db:
@@ -900,15 +912,21 @@ def feature_enrichment_candidates(user_id: str, provider: str, limit: int = 25) 
             JOIN playlist_tracks pt ON pt.track_id = t.track_id
             JOIN playlists p ON p.user_id = pt.user_id AND p.playlist_id = pt.playlist_id
             LEFT JOIN provider_fetches pf ON pf.track_id = t.track_id AND pf.provider = ?
-            WHERE pt.user_id = ? AND p.is_active = 1 AND (pf.track_id IS NULL OR pf.status = 'error')
+            WHERE pt.user_id = ? AND p.is_active = 1
+              AND (
+                  pf.track_id IS NULL OR pf.status = 'error'
+                  OR (? = 1 AND pf.status <> 'complete')
+              )
             ORDER BY t.name COLLATE NOCASE, t.track_id LIMIT ?
             """,
-            (provider, user_id, limit),
+            (provider, user_id, int(retry_unsuccessful), limit),
         ).fetchall()
     return [dict(row) for row in rows]
 
 
-def begin_feature_enrichment_job(user_id: str, provider: str, batch_limit: int = 25) -> int | None:
+def begin_feature_enrichment_job(
+    user_id: str, provider: str, batch_limit: int = 25, *, retry_unsuccessful: bool = False,
+) -> int | None:
     initialize_catalog()
     batch_limit = max(1, min(int(batch_limit), 10000))
     with _DB_LOCK, closing(_connect()) as db, db:
@@ -917,7 +935,9 @@ def begin_feature_enrichment_job(user_id: str, provider: str, batch_limit: int =
             (user_id,),
         ).fetchone():
             return None
-        total = len(feature_enrichment_candidates(user_id, provider, batch_limit))
+        total = len(feature_enrichment_candidates(
+            user_id, provider, batch_limit, retry_unsuccessful=retry_unsuccessful,
+        ))
         cursor = db.execute(
             "INSERT INTO enrichment_jobs (user_id, provider, status, total_tracks, batch_limit) VALUES (?, ?, 'running', ?, ?)",
             (user_id, provider, total, batch_limit),

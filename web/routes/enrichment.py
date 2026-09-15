@@ -27,10 +27,14 @@ router = APIRouter()
 FULL_CATALOG_LIMIT = 10000
 
 
-def _run_musicbrainz_job(job_id: int, user_id: str, batch_limit: int) -> None:
+def _run_musicbrainz_job(
+    job_id: int, user_id: str, batch_limit: int, *, retry_unsuccessful: bool = False,
+) -> None:
     completed = matched = review = missing = failed = 0
     try:
-        candidates = enrichment_candidates(user_id, batch_limit)
+        candidates = enrichment_candidates(
+            user_id, batch_limit, retry_unsuccessful=retry_unsuccessful,
+        )
         for index, track in enumerate(candidates):
             update_enrichment_job(job_id, current_track=track["name"] or track["track_id"])
             try:
@@ -64,10 +68,15 @@ def _run_musicbrainz_job(job_id: int, user_id: str, batch_limit: int) -> None:
         finish_enrichment_job(job_id, "error", str(exc)[:1000])
 
 
-def _run_feature_job(job_id: int, user_id: str, provider: str, batch_limit: int) -> None:
+def _run_feature_job(
+    job_id: int, user_id: str, provider: str, batch_limit: int,
+    *, retry_unsuccessful: bool = False,
+) -> None:
     completed = found = missing = failed = 0
     try:
-        for track in feature_enrichment_candidates(user_id, provider, batch_limit):
+        for track in feature_enrichment_candidates(
+            user_id, provider, batch_limit, retry_unsuccessful=retry_unsuccessful,
+        ):
             update_enrichment_job(job_id, current_track=track["name"] or track["track_id"])
             try:
                 observations = PROVIDERS[provider](track)
@@ -109,6 +118,28 @@ def run_full_enrichment_pipeline(user_id: str) -> None:
         if job_id is None:
             return
         _run_feature_job(job_id, user_id, provider, FULL_CATALOG_LIMIT)
+
+
+def run_retry_enrichment_pipeline(user_id: str) -> None:
+    """Retry every non-successful, non-manually-locked enrichment result once."""
+    musicbrainz_job = begin_enrichment_job(
+        user_id, "musicbrainz-retry", FULL_CATALOG_LIMIT, retry_unsuccessful=True,
+    )
+    if musicbrainz_job is None:
+        return
+    _run_musicbrainz_job(
+        musicbrainz_job, user_id, FULL_CATALOG_LIMIT, retry_unsuccessful=True,
+    )
+
+    for provider in PROVIDERS:
+        job_id = begin_feature_enrichment_job(
+            user_id, provider, FULL_CATALOG_LIMIT, retry_unsuccessful=True,
+        )
+        if job_id is None:
+            return
+        _run_feature_job(
+            job_id, user_id, provider, FULL_CATALOG_LIMIT, retry_unsuccessful=True,
+        )
 
 
 def launch_full_enrichment(user_id: str) -> threading.Thread:

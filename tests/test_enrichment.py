@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 from web import catalog
 from web.services.musicbrainz import _search_title, match_recording
 from web.services import feature_providers
-from web.routes.enrichment import run_full_enrichment_pipeline
+from web.routes.enrichment import run_full_enrichment_pipeline, run_retry_enrichment_pipeline
 
 
 class MusicBrainzTests(unittest.TestCase):
@@ -140,6 +140,32 @@ class EnrichmentCatalogTests(unittest.TestCase):
         self.assertEqual(profile["providers"]["listenbrainz"]["status"], "complete")
         self.assertIsNone(catalog.track_profile("another-user", "track-1"))
 
+    def test_retry_candidates_include_unsuccessful_results(self):
+        catalog.save_track_identity(
+            "track-1", recording_id=None, status="missing", method="metadata",
+            confidence=None, candidates=[], reason="No candidate found.",
+        )
+        self.assertEqual(catalog.enrichment_candidates("user-1"), [])
+        self.assertEqual(
+            [item["track_id"] for item in catalog.enrichment_candidates(
+                "user-1", retry_unsuccessful=True,
+            )],
+            ["track-1"],
+        )
+
+        catalog.save_track_identity(
+            "track-1", recording_id="mbid-1", status="matched", method="metadata",
+            confidence=1.0, candidates=[], reason="Matched.",
+        )
+        catalog.save_provider_result("track-1", "listenbrainz", "missing", [], "No entry.")
+        self.assertEqual(catalog.feature_enrichment_candidates("user-1", "listenbrainz"), [])
+        self.assertEqual(
+            [item["track_id"] for item in catalog.feature_enrichment_candidates(
+                "user-1", "listenbrainz", retry_unsuccessful=True,
+            )],
+            ["track-1"],
+        )
+
 
 class FeatureProviderTests(unittest.TestCase):
     @patch("web.services.feature_providers._get_optional")
@@ -192,6 +218,28 @@ class FeatureProviderTests(unittest.TestCase):
             [call.args[2] for call in run_feature.call_args_list],
             ["acousticbrainz", "listenbrainz", "reccobeats"],
         )
+
+    @patch("web.routes.enrichment._run_feature_job")
+    @patch("web.routes.enrichment._run_musicbrainz_job")
+    @patch("web.routes.enrichment.begin_feature_enrichment_job")
+    @patch("web.routes.enrichment.begin_enrichment_job")
+    def test_retry_pipeline_rechecks_only_unsuccessful_results(
+        self, begin_identity, begin_feature, run_identity, run_feature
+    ):
+        begin_identity.return_value = 11
+        begin_feature.side_effect = [12, 13, 14]
+
+        run_retry_enrichment_pipeline("user-1")
+
+        self.assertTrue(begin_identity.call_args.kwargs["retry_unsuccessful"])
+        self.assertTrue(run_identity.call_args.kwargs["retry_unsuccessful"])
+        self.assertEqual(
+            [call.args[1] for call in begin_feature.call_args_list],
+            ["acousticbrainz", "listenbrainz", "reccobeats"],
+        )
+        self.assertTrue(all(
+            call.kwargs["retry_unsuccessful"] for call in run_feature.call_args_list
+        ))
 
 
 if __name__ == "__main__":
