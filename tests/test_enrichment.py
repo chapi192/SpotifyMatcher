@@ -30,6 +30,7 @@ class MusicBrainzTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "matched")
         self.assertEqual(result["recording_id"], "mbid-1")
+        self.assertIn("passed", result["reason"])
         self.assertIn("recording", session.get.call_args.args[0])
 
     def test_low_confidence_match_is_held_for_review(self):
@@ -47,6 +48,7 @@ class MusicBrainzTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "review")
         self.assertIsNone(result["recording_id"])
+        self.assertIn("below", result["reason"])
 
     def test_closest_duration_breaks_equal_search_scores(self):
         response = Mock(status_code=200)
@@ -75,6 +77,7 @@ class MusicBrainzTests(unittest.TestCase):
         result = match_recording({"name": "Track", "artists": "Artist"}, session=session)
 
         self.assertEqual(result["status"], "missing")
+        self.assertIn("no recording", result["reason"])
         self.assertEqual(session.get.call_count, 2)
         sleep.assert_called_once_with(1.05)
 
@@ -107,6 +110,7 @@ class EnrichmentCatalogTests(unittest.TestCase):
         catalog.save_track_identity(
             "track-1", recording_id="mbid-1", status="matched", method="isrc",
             confidence=1.0, candidates=[],
+            reason="Accepted test identity.",
         )
         catalog.update_enrichment_job(job_id, completed_tracks=1, matched_tracks=1)
         catalog.finish_enrichment_job(job_id, "complete")
@@ -117,6 +121,7 @@ class EnrichmentCatalogTests(unittest.TestCase):
         self.assertEqual(status["job"]["failed_tracks"], 0)
         self.assertEqual(status["identity_counts"]["matched"], 1)
         self.assertEqual(status["recent_matches"][0]["musicbrainz_recording_id"], "mbid-1")
+        self.assertEqual(status["recent_matches"][0]["decision_reason"], "Accepted test identity.")
         self.assertEqual(catalog.enrichment_candidates("user-1"), [])
 
 

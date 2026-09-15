@@ -33,11 +33,13 @@ def _run_musicbrainz_job(job_id: int, user_id: str, batch_limit: int) -> None:
                 result = {
                     "recording_id": None, "status": "error", "method": "isrc" if track.get("isrc") else "metadata",
                     "confidence": None, "candidates": [],
+                    "reason": "MusicBrainz remained temporarily unavailable after four attempts. This track is safe to retry.",
                 }
             save_track_identity(
                 track["track_id"], recording_id=result["recording_id"],
                 status=result["status"], method=result["method"],
                 confidence=result["confidence"], candidates=result["candidates"],
+                reason=result["reason"],
             )
             completed += 1
             matched += int(result["status"] == "matched")

@@ -75,7 +75,11 @@ def match_recording(track: dict, session=requests) -> dict:
     recordings = payload.get("recordings") or []
     candidates = [_candidate(item) for item in recordings[:5]]
     if not candidates:
-        return {"status": "missing", "method": method, "recording_id": None, "confidence": None, "candidates": []}
+        return {
+            "status": "missing", "method": method, "recording_id": None,
+            "confidence": None, "candidates": [],
+            "reason": "MusicBrainz returned no recording for the normalized title and artist.",
+        }
 
     expected_duration = track.get("duration_ms")
     def adjusted_score(candidate: dict) -> int:
@@ -95,12 +99,21 @@ def match_recording(track: dict, session=requests) -> dict:
     score = adjusted_score(best)
 
     status = "matched" if score >= 90 else "review"
+    best_duration = best.get("duration_ms")
+    duration_difference = abs(expected_duration - best_duration) if expected_duration and best_duration else None
+    if status == "matched":
+        reason = "Accepted because the identity score and recording duration passed the confidence threshold."
+    elif duration_difference and duration_difference > 10000:
+        reason = f"Held for review because the closest candidate is {round(duration_difference / 1000)} seconds different in length."
+    else:
+        reason = f"Held for review because the best candidate scored {max(0, min(score, 100))}%, below the 90% automatic-match threshold."
     return {
         "status": status,
         "method": method,
         "recording_id": best["recording_id"] if status == "matched" else None,
         "confidence": max(0, min(score, 100)) / 100,
         "candidates": candidates,
+        "reason": reason,
     }
 
 

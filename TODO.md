@@ -70,6 +70,8 @@ home server. Spotify Development Mode is sufficient for this use case.
 - [x] Retry MusicBrainz throttling/capacity responses and isolate temporary
   provider failures to individual tracks without losing batch progress.
 - [ ] Add review controls for uncertain MusicBrainz matches.
+- [x] Persist and display the reason behind automatic, held, missing, and
+  temporary-error MusicBrainz decisions.
 - [ ] Add AcousticBrainz, ListenBrainz, and optional ReccoBeats enrichment
   adapters after identity matches have been reviewed.
 - [ ] Recommend existing destinations for newly liked or unfiled tracks.

@@ -130,6 +130,7 @@ def initialize_catalog() -> None:
                 match_status TEXT NOT NULL DEFAULT 'pending',
                 match_method TEXT,
                 confidence REAL,
+                decision_reason TEXT,
                 candidates_json TEXT NOT NULL DEFAULT '[]',
                 manually_locked INTEGER NOT NULL DEFAULT 0,
                 checked_at TEXT,
@@ -220,6 +221,10 @@ def initialize_catalog() -> None:
             db.execute("ALTER TABLE enrichment_jobs ADD COLUMN batch_limit INTEGER")
         if "failed_tracks" not in enrichment_columns:
             db.execute("ALTER TABLE enrichment_jobs ADD COLUMN failed_tracks INTEGER NOT NULL DEFAULT 0")
+
+        identity_columns = {row["name"] for row in db.execute("PRAGMA table_info(track_identities)")}
+        if "decision_reason" not in identity_columns:
+            db.execute("ALTER TABLE track_identities ADD COLUMN decision_reason TEXT")
 
 
 
@@ -782,23 +787,25 @@ def enrichment_candidates(user_id: str, limit: int | None = None) -> list[dict]:
 
 
 def save_track_identity(track_id: str, *, recording_id: str | None, status: str,
-                        method: str, confidence: float | None, candidates: list[dict]) -> None:
+                        method: str, confidence: float | None, candidates: list[dict],
+                        reason: str | None = None) -> None:
     with _DB_LOCK, closing(_connect()) as db, db:
         db.execute(
             """
             INSERT INTO track_identities (
                 track_id, musicbrainz_recording_id, match_status, match_method,
-                confidence, candidates_json, checked_at
-            ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                confidence, decision_reason, candidates_json, checked_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(track_id) DO UPDATE SET
                 musicbrainz_recording_id = CASE WHEN manually_locked = 1 THEN musicbrainz_recording_id ELSE excluded.musicbrainz_recording_id END,
                 match_status = CASE WHEN manually_locked = 1 THEN match_status ELSE excluded.match_status END,
                 match_method = CASE WHEN manually_locked = 1 THEN match_method ELSE excluded.match_method END,
                 confidence = CASE WHEN manually_locked = 1 THEN confidence ELSE excluded.confidence END,
+                decision_reason = CASE WHEN manually_locked = 1 THEN decision_reason ELSE excluded.decision_reason END,
                 candidates_json = CASE WHEN manually_locked = 1 THEN candidates_json ELSE excluded.candidates_json END,
                 checked_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
             """,
-            (track_id, recording_id, status, method, confidence, json.dumps(candidates)),
+            (track_id, recording_id, status, method, confidence, reason, json.dumps(candidates)),
         )
 
 
@@ -843,6 +850,7 @@ def enrichment_status(user_id: str) -> dict:
             """
             SELECT ti.track_id, t.name, t.album_name, ti.musicbrainz_recording_id,
                    ti.match_status, ti.match_method, ti.confidence, ti.candidates_json,
+                   ti.decision_reason,
                    ti.checked_at,
                    COALESCE((SELECT GROUP_CONCAT(a.name, ', ') FROM track_artists ta
                        JOIN artists a ON a.artist_id = ta.artist_id WHERE ta.track_id = ti.track_id), '') AS artists

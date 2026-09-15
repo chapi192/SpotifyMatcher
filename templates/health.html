@@ -43,7 +43,7 @@
             </div>
             <div class="health-table-wrap">
                 <table class="health-table match-table">
-                    <thead><tr><th>Spotify track</th><th>Artist</th><th>Decision</th><th>Confidence</th><th>MusicBrainz candidate</th></tr></thead>
+                    <thead><tr><th>Spotify track</th><th>Artist</th><th>Decision</th><th>Confidence</th><th>MusicBrainz candidate</th><th>Why</th></tr></thead>
                     <tbody id="matchReviewRows"></tbody>
                 </table>
             </div>
@@ -236,7 +236,10 @@ function renderMatchReview(rows) {
         const candidateHtml = mbid
             ? `<a href="https://musicbrainz.org/recording/${encodeURIComponent(mbid)}" target="_blank" rel="noopener">${escapeHealth(candidateText)}</a>`
             : escapeHealth(candidateText);
-        return `<tr><td>${escapeHealth(row.name)}</td><td>${escapeHealth(row.artists)}</td><td><span class="match-status ${escapeHealth(row.match_status)}">${escapeHealth(row.match_status)}</span></td><td>${confidence}</td><td>${candidateHtml}</td></tr>`;
+        const fallbackReason = row.match_status === "error"
+            ? "MusicBrainz was temporarily unavailable; safe to retry."
+            : row.match_status === "missing" ? "No candidate matched the normalized title and artist." : "No explanation recorded by this older run.";
+        return `<tr><td>${escapeHealth(row.name)}</td><td>${escapeHealth(row.artists)}</td><td><span class="match-status ${escapeHealth(row.match_status)}">${escapeHealth(row.match_status)}</span></td><td>${confidence}</td><td>${candidateHtml}</td><td class="match-reason">${escapeHealth(row.decision_reason || fallbackReason)}</td></tr>`;
     }).join("");
 }
 refreshEnrichmentStatus();
