@@ -992,6 +992,82 @@ def feature_comparison(user_id: str, limit: int = 100) -> list[dict]:
     return output
 
 
+def track_profile(user_id: str, track_id: str) -> dict | None:
+    initialize_catalog()
+    with _DB_LOCK, closing(_connect()) as db, db:
+        track = db.execute(
+            """
+            SELECT t.*, COALESCE((SELECT GROUP_CONCAT(a.name, ', ') FROM track_artists ta
+                JOIN artists a ON a.artist_id = ta.artist_id WHERE ta.track_id = t.track_id), '') AS artists
+            FROM tracks t
+            WHERE t.track_id = ? AND EXISTS (
+                SELECT 1 FROM playlist_tracks pt WHERE pt.track_id = t.track_id AND pt.user_id = ?
+            )
+            """,
+            (track_id, user_id),
+        ).fetchone()
+        if not track:
+            return None
+
+        identity = db.execute("SELECT * FROM track_identities WHERE track_id = ?", (track_id,)).fetchone()
+        identity_data = dict(identity) if identity else None
+        if identity_data:
+            identity_data["candidates"] = json.loads(identity_data.pop("candidates_json") or "[]")
+
+        playlist_rows = db.execute(
+            """
+            SELECT p.playlist_id, p.name, p.image_url, p.is_liked, p.is_active,
+                   EXISTS (
+                       SELECT 1 FROM playlist_tracks pt
+                       WHERE pt.user_id = p.user_id AND pt.playlist_id = p.playlist_id
+                         AND pt.track_id = ?
+                   ) AS contains_track,
+                   (SELECT MIN(pt.position) FROM playlist_tracks pt
+                       WHERE pt.user_id = p.user_id AND pt.playlist_id = p.playlist_id
+                         AND pt.track_id = ?) AS position
+            FROM playlists p
+            WHERE p.user_id = ? AND p.is_active = 1
+            ORDER BY p.is_liked DESC, contains_track DESC, p.name COLLATE NOCASE
+            """,
+            (track_id, track_id, user_id),
+        ).fetchall()
+
+        providers = {}
+        for fetch in db.execute("SELECT provider, status, reason, fetched_at FROM provider_fetches WHERE track_id = ?", (track_id,)):
+            features = {}
+            for row in db.execute(
+                "SELECT feature_name, numeric_value, text_value, json_value, confidence, fetched_at FROM feature_observations WHERE track_id = ? AND provider = ? ORDER BY feature_name",
+                (track_id, fetch["provider"]),
+            ):
+                value = row["numeric_value"]
+                if value is None: value = row["text_value"]
+                if value is None and row["json_value"]: value = json.loads(row["json_value"])
+                features[row["feature_name"]] = {"value": value, "confidence": row["confidence"]}
+            providers[fetch["provider"]] = {
+                "status": fetch["status"], "reason": fetch["reason"],
+                "fetched_at": fetch["fetched_at"], "features": features,
+            }
+
+        resolved = {}
+        for row in db.execute("SELECT * FROM resolved_features WHERE track_id = ? ORDER BY feature_name", (track_id,)):
+            value = row["numeric_value"]
+            if value is None: value = row["text_value"]
+            if value is None and row["json_value"]: value = json.loads(row["json_value"])
+            resolved[row["feature_name"]] = {
+                "value": value, "mode": row["resolution_mode"],
+                "preferred_provider": row["preferred_provider"], "manually_locked": bool(row["manually_locked"]),
+            }
+
+    playlists = [dict(row) for row in playlist_rows]
+    return {
+        "track": dict(track), "identity": identity_data, "providers": providers,
+        "resolved_features": resolved,
+        "in_playlists": [row for row in playlists if row["contains_track"]],
+        "not_in_playlists": [row for row in playlists if not row["contains_track"]],
+        "is_liked": any(row["is_liked"] and row["contains_track"] for row in playlists),
+    }
+
+
 def save_selection(user_id: str, selected_ids: list[str], hidden_ids: list[str], breakdown_source: str | None) -> None:
     initialize_catalog()
     with _DB_LOCK, closing(_connect()) as db, db:

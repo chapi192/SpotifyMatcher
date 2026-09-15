@@ -132,6 +132,13 @@ class EnrichmentCatalogTests(unittest.TestCase):
         self.assertEqual(comparison[0]["providers"]["listenbrainz"]["features"]["tags"]["value"][0]["name"], "rock")
         self.assertEqual(catalog.feature_enrichment_candidates("user-1", "listenbrainz"), [])
 
+        profile = catalog.track_profile("user-1", "track-1")
+        self.assertEqual(profile["track"]["name"], "Track")
+        self.assertEqual(profile["identity"]["musicbrainz_recording_id"], "mbid-1")
+        self.assertEqual(profile["in_playlists"][0]["name"], "Playlist")
+        self.assertEqual(profile["providers"]["listenbrainz"]["status"], "complete")
+        self.assertIsNone(catalog.track_profile("another-user", "track-1"))
+
 
 class FeatureProviderTests(unittest.TestCase):
     @patch("web.services.feature_providers._get_optional")

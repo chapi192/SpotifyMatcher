@@ -41,6 +41,8 @@ home server. Spotify Development Mode is sufficient for this use case.
 
 ## Phase 2: library health and audit
 
+- [x] Add a durable local profile for every track, including identity evidence,
+  provider observations, confidence, Spotify link, and playlist membership.
 - [x] Add a local, read-only Library Health dashboard with searchable audit
   results and basic playlist-size statistics.
 - [x] Identify Liked Songs that are not in another active playlist ("orphans").
@@ -93,6 +95,8 @@ home server. Spotify Development Mode is sufficient for this use case.
   summaries rather than OAuth tokens or the entire database.
 - [ ] Keep AI-triggered Spotify writes disabled until the normal preview,
   confirmation, and undo workflow exists.
+- [ ] Optionally analyze legally owned local audio with Essentia; match files to
+  catalog tracks using ISRC, metadata, duration, and acoustic fingerprints.
 
 ## Operations and home-server deployment
 

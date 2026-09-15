@@ -33,6 +33,8 @@
 .feature-track header { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .feature-track header strong, .feature-track header span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .feature-track header span { color: #818b99; font-size: 12px; }
+.feature-track header a { color: #e4e8ee; text-decoration: none; }
+.feature-track header a:hover { color: var(--accent-green); }
 .provider-observations { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-bottom: 8px; }
 .provider-observations > strong { width: 105px; color: var(--accent-green); font-size: 11px; text-transform: uppercase; }
 .provider-observations > p { margin: 0; color: #818b99; font-size: 11px; }

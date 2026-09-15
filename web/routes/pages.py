@@ -31,6 +31,13 @@ def health(request: Request):
     return templates.TemplateResponse("health.html", {"request": request})
 
 
+@router.get("/track/{track_id}", response_class=HTMLResponse)
+def track_page(track_id: str, request: Request):
+    if not request.session.get("token_info"):
+        return RedirectResponse("/login")
+    return templates.TemplateResponse("track_profile.html", {"request": request, "track_id": track_id})
+
+
 @router.get("/recommendations", response_class=HTMLResponse)
 def recommendations(request: Request):
     if not request.session.get("token_info"):

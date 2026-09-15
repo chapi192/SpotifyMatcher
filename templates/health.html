@@ -32,6 +32,7 @@
                     <option value="25" selected>25 tracks</option>
                     <option value="50">50 tracks</option>
                     <option value="100">100 tracks</option>
+                    <option value="1500">1500 tracks</option>
                 </select>
                 <button id="startEnrichmentBtn" class="btn" type="button">Match sample</button>
                 <button class="btn provider-btn" data-provider="acousticbrainz" type="button">AcousticBrainz</button>
@@ -140,7 +141,7 @@ function renderHealthRows() {
     const body = document.getElementById("healthRows");
     body.innerHTML = rows.map(row => `
         <tr>
-            <td><a href="${escapeHealth(row.spotify_url || '#')}" ${row.spotify_url ? 'target="_blank" rel="noopener"' : ''}>${escapeHealth(row.name || "Unknown track")}</a></td>
+            <td><a href="/track/${encodeURIComponent(row.track_id)}">${escapeHealth(row.name || "Unknown track")}</a></td>
             <td>${escapeHealth(row.artists)}</td>
             <td>${escapeHealth(row.album_name || "Unknown album")}</td>
             <td class="health-context">${escapeHealth(panel.context(row))}</td>
@@ -268,7 +269,7 @@ async function loadFeatureComparison() {
             ).join("");
             return `<div class="provider-observations"><strong>${escapeHealth(name)}</strong><span class="match-status ${escapeHealth(result.status)}">${escapeHealth(result.status)}</span>${features || `<p>${escapeHealth(result.reason || "No observations")}</p>`}</div>`;
         }).join("");
-        return `<article class="feature-track"><header><strong>${escapeHealth(track.name)}</strong><span>${escapeHealth(track.artists)}</span></header><div>${providers}</div></article>`;
+        return `<article class="feature-track"><header><strong><a href="/track/${encodeURIComponent(track.track_id)}">${escapeHealth(track.name)}</a></strong><span>${escapeHealth(track.artists)}</span></header><div>${providers}</div></article>`;
     }).join("");
 }
 
@@ -286,7 +287,7 @@ function renderMatchReview(rows) {
         const fallbackReason = row.match_status === "error"
             ? "MusicBrainz was temporarily unavailable; safe to retry."
             : row.match_status === "missing" ? "No candidate matched the normalized title and artist." : "No explanation recorded by this older run.";
-        return `<tr><td>${escapeHealth(row.name)}</td><td>${escapeHealth(row.artists)}</td><td><span class="match-status ${escapeHealth(row.match_status)}">${escapeHealth(row.match_status)}</span></td><td>${confidence}</td><td>${candidateHtml}</td><td class="match-reason">${escapeHealth(row.decision_reason || fallbackReason)}</td></tr>`;
+        return `<tr><td><a href="/track/${encodeURIComponent(row.track_id)}">${escapeHealth(row.name)}</a></td><td>${escapeHealth(row.artists)}</td><td><span class="match-status ${escapeHealth(row.match_status)}">${escapeHealth(row.match_status)}</span></td><td>${confidence}</td><td>${candidateHtml}</td><td class="match-reason">${escapeHealth(row.decision_reason || fallbackReason)}</td></tr>`;
     }).join("");
 }
 refreshEnrichmentStatus();
