@@ -27,8 +27,6 @@
     </div>
     <div id="globalProgressBar" class="global-progress"></div>
     <div class="nav-links">
-        <a href="/">Home</a>
-
         {% if request.session.get("token_info") %}
             <a href="/dashboard">Playlists</a> <!-- Dashboard -->
             <a id="navWorkspace" class="nav-disabled" href="/workspace">Insights</a>

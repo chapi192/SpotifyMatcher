@@ -5,9 +5,9 @@ from web.templates_config import templates
 
 router = APIRouter()
 
-@router.get("/", response_class=HTMLResponse)
-def landing(request: Request):
-    return templates.TemplateResponse("landing.html", {"request": request})
+@router.get("/")
+def root(request: Request):
+    return RedirectResponse("/dashboard")
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
@@ -19,9 +19,13 @@ def dashboard(request: Request):
 
 @router.get("/workspace", response_class=HTMLResponse)
 def workspace(request: Request):
+    if not request.session.get("token_info"):
+        return RedirectResponse("/login")
     return templates.TemplateResponse("workspace.html", {"request": request})
 
 
 @router.get("/recommendations", response_class=HTMLResponse)
 def recommendations(request: Request):
+    if not request.session.get("token_info"):
+        return RedirectResponse("/login")
     return templates.TemplateResponse("recommendations.html", {"request": request})
