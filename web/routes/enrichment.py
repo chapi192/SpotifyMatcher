@@ -131,7 +131,10 @@ def run_retry_enrichment_pipeline(user_id: str) -> None:
         musicbrainz_job, user_id, FULL_CATALOG_LIMIT, retry_unsuccessful=True,
     )
 
-    for provider in PROVIDERS:
+    # ReccoBeats produced no reliable catalog matches during the full-library
+    # pass, so repeating its missing results would only duplicate thousands of
+    # low-value requests.
+    for provider in ("acousticbrainz", "listenbrainz"):
         job_id = begin_feature_enrichment_job(
             user_id, provider, FULL_CATALOG_LIMIT, retry_unsuccessful=True,
         )

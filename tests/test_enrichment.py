@@ -227,7 +227,7 @@ class FeatureProviderTests(unittest.TestCase):
         self, begin_identity, begin_feature, run_identity, run_feature
     ):
         begin_identity.return_value = 11
-        begin_feature.side_effect = [12, 13, 14]
+        begin_feature.side_effect = [12, 13]
 
         run_retry_enrichment_pipeline("user-1")
 
@@ -235,7 +235,7 @@ class FeatureProviderTests(unittest.TestCase):
         self.assertTrue(run_identity.call_args.kwargs["retry_unsuccessful"])
         self.assertEqual(
             [call.args[1] for call in begin_feature.call_args_list],
-            ["acousticbrainz", "listenbrainz", "reccobeats"],
+            ["acousticbrainz", "listenbrainz"],
         )
         self.assertTrue(all(
             call.kwargs["retry_unsuccessful"] for call in run_feature.call_args_list
